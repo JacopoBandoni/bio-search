@@ -35,6 +35,61 @@ rel_model = rel_model.to(device)
 
 rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0)
 
+def download_articles_biopython(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '') -> List[Article]:
+    """
+    Download articles from PubMed using BioPython library.
+
+    Args:
+        query (str): The query to search for.
+        start_year (int): The start year to search for.
+        end_year (int): The end year to search for.
+        max_results (int): The maximum number of results to return.
+        author (str): The author to search for, leave empty to search for all authors.
+
+    Returns:
+        List[Article] A list of articles.
+    """
+    current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+    file_name = '{}_{}_{}_{}.txt'.format(query, start_year, end_year, max_results)
+    if os.path.exists(current_path / file_name):
+        print("Loading from cache...")
+        with open(current_path / file_name, 'rb') as f:
+            return pickle.load(f)
+    
+    Entrez.email = 'pubmadbiosearch@gmail.com'
+    query = '(' + title + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' + \
+                           str(end_year) + '"[Date - Create]))'
+    
+    handle = Entrez.esearch(db='pubmed', 
+                            sort='relevance', 
+                            retmax=max_results,
+                            retmode='xml',
+                            usehistory='y', 
+                            term=query)
+    results = Entrez.read(handle)               
+    id_list = results['IdList']
+    ids = ','.join(id_list)
+    handle = Entrez.efetch(db='pubmed', rettype="medline",
+                           id=ids, retmode='text')                
+    results = Medline.parse(handle)
+    results = list(results)
+    articles = []
+    for article in results:
+        abstract = article.get("AB", "?")
+        if abstract != "?":
+            if abstract.find("This article has been withdrawn at the request of the author(s) and/or editor") == -1 and \
+               abstract.find("An amendment to this paper has been published and can be accessed via a link at the top of the paper") == -1 and \
+               abstract.find("This corrects the article") == -1 and abstract.find("A Correction to this paper has been published") == -1:
+                articles.append(Article(title=article['TI'], abstract=abstract, 
+                                        pmid=article['PMID'], full_text='', publication_data=datetime.strptime(article['DP'][:4], '%Y')))
+
+
+    
+
+    # save articles to pickle file
+    with open(current_path / file_name, 'wb') as f:
+        pickle.dump(articles, f)
+    return articles
 
 def download_articles(query: str, start_year: int, end_year: int, max_results: int = 100, author: str = '') -> List[Article]:
     """
