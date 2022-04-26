@@ -15,7 +15,6 @@ import string
 from multiprocessing import Pool, cpu_count
 import tqdm
 from nltk.tokenize import sent_tokenize
-from Bio import Entrez, Medline
 import pickle
 from pathlib import Path
 import time
@@ -33,19 +32,17 @@ rel_model.eval()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 rel_model = rel_model.to(device)
 
-rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0)
+rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0 if device=='cuda' else -1)
 
 def download_articles_biopython(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '') -> List[Article]:
     """
     Download articles from PubMed using BioPython library.
-
     Args:
         query (str): The query to search for.
         start_year (int): The start year to search for.
         end_year (int): The end year to search for.
         max_results (int): The maximum number of results to return.
         author (str): The author to search for, leave empty to search for all authors.
-
     Returns:
         List[Article] A list of articles.
     """
@@ -55,11 +52,11 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
         print("Loading from cache...")
         with open(current_path / file_name, 'rb') as f:
             return pickle.load(f)
-    
+
     Entrez.email = 'pubmadbiosearch@gmail.com'
     query = '(' + title + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' + \
                            str(end_year) + '"[Date - Create]))'
-    
+
     handle = Entrez.esearch(db='pubmed', 
                             sort='relevance', 
                             retmax=max_results,
@@ -84,14 +81,14 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
                                         pmid=article['PMID'], full_text='', publication_data=datetime.strptime(article['DP'][:4], '%Y')))
 
 
-    
+
 
     # save articles to pickle file
     with open(current_path / file_name, 'wb') as f:
         pickle.dump(articles, f)
     return articles
 
-def download_articles(query: str, start_year: int, end_year: int, max_results: int = 100, author: str = '') -> List[Article]:
+def download_articles(query: str, start_year: int, end_year: int, max_results: int = 100, clear_cache: bool = False, author: str = '') -> List[Article]:
     """
     Download articles from PubMed.
 
@@ -100,6 +97,7 @@ def download_articles(query: str, start_year: int, end_year: int, max_results: i
         start_year (int): The start year to search for.
         end_year (int): The end year to search for.
         max_results (int): The maximum number of results to return.
+        clear_cache (bool): Whether to clear the cache.
         author (str): The author to search for, leave empty to search for all authors.
 
     Returns:
@@ -108,9 +106,13 @@ def download_articles(query: str, start_year: int, end_year: int, max_results: i
     current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
     file_name = '{}_{}_{}_{}.txt'.format(query, start_year, end_year, max_results)
     if os.path.exists(current_path / file_name):
-        print("Loading from cache...")
-        with open(current_path / file_name, 'rb') as f:
-            return pickle.load(f)
+        if clear_cache:
+            print("Removing cache...")
+            os.remove(current_path / file_name)
+        else:
+            print("Loading from cache...")
+            with open(current_path / file_name, 'rb') as f:
+                return pickle.load(f)
     
     pubmed = PubMed(tool="PubMad", email="pubmadbiosearch@gmail.com")
     results = pubmed.query('(' + query + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' +
@@ -129,6 +131,8 @@ def download_articles(query: str, start_year: int, end_year: int, max_results: i
     # save articles to pickle file
     with open(current_path / file_name, 'wb') as f:
         pickle.dump(articles, f)
+    
+    print(f'Retrived {len(articles)} articles')
     return articles
 
 
@@ -242,7 +246,7 @@ def extract_naive_relations(entities: List[Entity]) -> List[Tuple[Entity, Entity
 #         return (gene_entity, disease_entity)
 #     return (None, None)
 
-def extract_biobert_relations(article : Article, source: str = 'abstract') -> Tuple[List[Entity], List[Tuple[Entity, Entity]]]:
+def extract_biobert_relations(article : Article, source: str = 'abstract', clear_cache: bool = False) -> Tuple[List[Entity], List[Tuple[Entity, Entity]], bool]:
     """
     Extract the entities from the article using BERN2 (online).
     Then it calls BioBERT to extract relations between genes and diseases.
@@ -250,21 +254,30 @@ def extract_biobert_relations(article : Article, source: str = 'abstract') -> Tu
     Args:
         article (Article): The article to extract entities from.
         source (str): The source to extract entities from. Can be 'abstract' or 'full_text'. Defaults to 'abstract'.
+        clear_cache (bool): Whether to clear the BioBERT cache. Defaults to False.
 
     Returns:
-        List[Tuple[Entity, Entity]]: A list of relations.
+        Tuple[List[Entity], List[Tuple[Entity, Entity]], bool]: A tuple of entities, relations and whether the cache was used.
 
     """
+    if len(str(article.pmid)) > 12:
+        # TODO: Fixare articoli con PMID multipli...
+        return [], [], True
     file_name = str(article.pmid) + '.txt'
     path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
-        print("Loading cached relations and entities")
-        with open(path / 'entities' / file_name, 'rb') as f:
-            entities = pickle.load(f)
-        with open(path / 'relations' / file_name, 'rb') as f:
-            relations = pickle.load(f)
-        return entities, relations
+        if clear_cache:
+            print("Clearing entities and relations cache for PMID {}".format(article.pmid))
+            os.remove(path / 'entities' / file_name)
+            os.remove(path / 'relations' / file_name)
+        else:
+            print("Loading cached relations and entities")
+            with open(path / 'entities' / file_name, 'rb') as f:
+                entities = pickle.load(f)
+            with open(path / 'relations' / file_name, 'rb') as f:
+                relations = pickle.load(f)
+            return entities, relations, True
 
     text = ''
     if source == 'abstract':
@@ -320,7 +333,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract') -> Tu
     with open(path / 'relations' / file_name, 'wb') as f:
         pickle.dump(relations, f)
     
-    return entities, relations
+    return entities, relations, False
 
 def query_plain(text, url="http://bern2.korea.ac.kr/plain"):
     """

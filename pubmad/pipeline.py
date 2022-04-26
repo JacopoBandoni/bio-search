@@ -5,7 +5,7 @@ from typing import List, Tuple
 from datetime import datetime
 import time
 
-def get_graph(query: str, max_publications: int = 100, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True) -> nx.Graph:
+def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = nx.Graph(), clear_cache: bool = False) -> nx.Graph:
     '''
     Returns a networkx graph containing relationships between genes and diseases.
     
@@ -22,11 +22,10 @@ def get_graph(query: str, max_publications: int = 100, start_year: int = 1800, e
             nx.Graph (networkx.Graph): A networkx graph containing relationships between genes and diseases.
     '''
     # Download the articles using pymed
-    articles: List[Article] = download_articles(query, start_year, end_year, max_publications)
+    articles: List[Article] = download_articles(query, start_year, end_year, max_publications, clear_cache)
 
-    G = nx.Graph()
-
-    i = 1
+    bern_calls_counter = 1
+    i = 0
     N = len(articles)
 
     for article in articles:
@@ -35,7 +34,12 @@ def get_graph(query: str, max_publications: int = 100, start_year: int = 1800, e
 
             relations: List[Tuple[Entity, Entity]] = extract_naive_relations(entities)
         else:
-            entities, relations = extract_biobert_relations(article, source)
+            entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
+            if bern_calls_counter % 100 == 0:
+                print('Sleeping for 100 seconds')
+                time.sleep(100)
+            if not used_cache:
+                bern_calls_counter += 1
         
         # Add the entities to the graph as nodes
         for entity in entities:
@@ -44,17 +48,16 @@ def get_graph(query: str, max_publications: int = 100, start_year: int = 1800, e
         # Add the relations to the graph as edges
         for src, dst in relations:
             G.add_edge(src.mesh_id[0], dst.mesh_id[0])
-
-        print(f'{i}/{N}')
-        if i % 100 == 0:
-            print('Sleeping for 100 seconds')
-            time.sleep(100)
         i += 1
+        print(f'Processing article {i}/{N}')
 
     # Save the graph in cytoscape format
     if save_graph == True:
-        file_name = f"{query}_{start_year}_{end_year}_{max_publications}_{source}_{'BioBert' if use_biobert else 'Naive'}.graphml"
+        file_name = f"output/{query}_{start_year}_{end_year}_{max_publications}_{source}_{'BioBert' if use_biobert else 'Naive'}.graphml"
         nx.write_graphml(G, file_name)
         print("Graph saved in:", file_name)
     
     return G
+
+def add_nodes(graph: nx.Graph, query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True) -> nx.Graph:
+    return get_graph(query, max_publications, start_year, end_year, use_biobert, source, save_graph, graph)

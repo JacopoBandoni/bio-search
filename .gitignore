@@ -1,2 +1,4 @@
 biobert/
 __pycache__
+output/
+cache/
