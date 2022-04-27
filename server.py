@@ -7,8 +7,8 @@ import networkx as nx
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/get_graph/<string:query>")
-def API_get_graph(query):
-    G = get_graph(query)
+@app.route("/get_graph/<string:query>/<int:max_publications>")
+def API_get_graph(query, max_publications):
+    G = get_graph(query, max_publications=max_publications)
     cy_data = json.dumps(nx.readwrite.json_graph.cytoscape_data(G))
     return cy_data
