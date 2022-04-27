@@ -6,7 +6,8 @@
 
 > flask run
 
-Then head over to the react client and execute
+Then head over to the react client (https://github.com/Pier297/BioSearch)
+and execute:
 
 > npm start
 
