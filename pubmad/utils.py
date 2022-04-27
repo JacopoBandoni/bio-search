@@ -20,6 +20,7 @@ from pathlib import Path
 import time
 from joblib import Parallel, delayed
 import copy
+from Bio import Entrez, Medline
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import pipeline
