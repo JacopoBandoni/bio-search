@@ -175,7 +175,10 @@ def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]
     entities = []
     for entity in annotations:
         if (entity['obj'] == 'disease' or entity['obj'] == 'gene'):
-            new_entity = Entity(mesh_id=entity['id'], mention=entity['mention'], type=entity['obj'], prob=entity['prob'], span_begin=entity['span']['begin'], span_end=entity['span']['end'])
+            pmid = article.pmid
+            if type(article.pmid) == list:
+                pmid = article.pmid[0]
+            new_entity = Entity(mesh_id=entity['id'], mention=entity['mention'], type=entity['obj'], prob=entity['prob'], span_begin=entity['span']['begin'], span_end=entity['span']['end'], pmid=pmid)
             entities.append(new_entity)
 
     return entities

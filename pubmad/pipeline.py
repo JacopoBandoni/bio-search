@@ -43,7 +43,13 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         
         # Add the entities to the graph as nodes
         for entity in entities:
-            G.add_node(entity.mesh_id[0], mention=entity.mention, type=entity.type)
+            # Search if there is already a node with the same mesh_id
+            if entity.mesh_id[0] not in G.nodes:
+                G.add_node(entity.mesh_id[0], mention=entity.mention, type=entity.type, pmid=entity.pmid)
+            else:
+                # If there is already a node with the same mesh_id, add the mention to the node
+                #G.nodes[entity.mesh_id[0]]['mention'] += ' ' + entity.mention
+                G.nodes[entity.mesh_id[0]]['pmid'] += ',' + entity.pmid
 
         # Add the relations to the graph as edges
         for src, dst in relations:

@@ -25,8 +25,9 @@ class Entity:
             span_end (int): The end of the span of the entity.
             article (Article): The article the entity is associated with.
             source (str): The source of the entity within the article. Can be 'abstract' or 'full_text'. Defaults to 'abstract'.
+            pmid (str): The PubMed ID of the article.
     '''
-    def __init__(self, mesh_id: List[str], mention: str, type: str, prob: float, span_begin: int, span_end: int, article: Article = None, source: str = 'abstract'):
+    def __init__(self, mesh_id: List[str], mention: str, type: str, prob: float, span_begin: int, span_end: int, article: Article = None, source: str = 'abstract', pmid: str = ''):
         self.mesh_id = mesh_id
         self.mention = mention
         self.type = type
@@ -35,3 +36,4 @@ class Entity:
         self.span_end = span_end
         self.article = article
         self.source = source
+        self.pmid = pmid
