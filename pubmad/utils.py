@@ -1,6 +1,5 @@
-import enum
 import torch
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 from pymed import PubMed 
 import json 
 import requests
@@ -10,10 +9,6 @@ from itertools import product
 from pubmad.types import Article, Entity
 import matplotlib.pyplot as plt
 import os
-import random
-import string
-from multiprocessing import Pool, cpu_count
-import tqdm
 from nltk.tokenize import sent_tokenize
 import pickle
 from pathlib import Path
@@ -48,9 +43,10 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
         List[Article] A list of articles.
     """
     current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
-    file_name = '{}_{}_{}_{}.txt'.format(query, start_year, end_year, max_results)
+    file_name = '{}_{}_{}_{}.txt'.format(title, start_year, end_year, max_results)
     if os.path.exists(current_path / file_name):
         print("Loading from cache...")
+        # TODO: clear_cache is not implemented yet
         with open(current_path / file_name, 'rb') as f:
             return pickle.load(f)
 
@@ -81,8 +77,7 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
                 articles.append(Article(title=article['TI'], abstract=abstract, 
                                         pmid=article['PMID'], full_text='', publication_data=datetime.strptime(article['DP'][:4], '%Y')))
 
-
-
+    print("Found {} articles".format(len(articles)))
 
     # save articles to pickle file
     with open(current_path / file_name, 'wb') as f:
@@ -265,6 +260,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
 
     """
     if len(str(article.pmid)) > 12:
+        print(article.abstract)
         # TODO: Fixare articoli con PMID multipli...
         return [], [], True
     file_name = str(article.pmid) + '.txt'
