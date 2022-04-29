@@ -1,3 +1,4 @@
+import os
 import networkx as nx
 from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations, download_articles_biopython
 from pubmad.types import Article, Entity
@@ -65,7 +66,15 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
 
     # Save the graph in cytoscape format
     if save_graph == True:
+        #create output directory if not exist
+        if not os.path.exists("output"):
+            # Create a new directory because it does not exist 
+            os.makedirs("output")
+            print("The new directory is created!")
+ 
         file_name = f"output/{query}_{start_year}_{end_year}_{max_publications}_{source}_{'BioBert' if use_biobert else 'Naive'}.graphml"
+        
+        
         nx.write_graphml(G, file_name)
         print("Graph saved in:", file_name)
     
