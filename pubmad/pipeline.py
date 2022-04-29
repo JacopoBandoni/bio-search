@@ -6,7 +6,7 @@ from typing import List, Tuple
 from datetime import datetime
 import time
 
-def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = nx.Graph(), clear_cache: bool = False, use_pymed: bool = True) -> nx.Graph:
+def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, use_pymed: bool = True) -> nx.Graph:
     '''
     Returns a networkx graph containing relationships between genes and diseases.
     
@@ -25,6 +25,10 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         Returns
             nx.Graph (networkx.Graph): A networkx graph containing relationships between genes and diseases.
     '''
+    if G is None:
+        G = nx.Graph()
+        G.clear()
+
     # Download the articles using pymed
     if use_pymed:
         articles: List[Article] = download_articles(query, start_year, end_year, max_publications, clear_cache)
@@ -59,8 +63,8 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
                 G.nodes[entity.mesh_id[0]]['pmid'] += ',' + entity.pmid
 
         # Add the relations to the graph as edges
-        for src, dst in relations:
-            G.add_edge(src.mesh_id[0], dst.mesh_id[0])
+        for src, dst, weight in relations:
+            G.add_edge(src.mesh_id[0], dst.mesh_id[0], weight=weight)
         i += 1
         print(f'Processing article {i}/{N}')
 

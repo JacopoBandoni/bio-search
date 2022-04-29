@@ -196,11 +196,13 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
 
     pos = nx.spring_layout(graph)
 
+    weights = nx.get_edge_attributes(graph,'weight')
+
     nx.draw_networkx_nodes(graph, pos, nodelist=gene_nodes, node_color='r', node_size=100, alpha=0.8, label='gene')
     nx.draw_networkx_nodes(graph, pos, nodelist=disease_nodes, node_color='b', node_size=100, alpha=0.8, label='disease')
     nx.draw_networkx_nodes(graph, pos, nodelist=other_nodes, node_color='g', node_size=100, alpha=0.8, label='other')
 
-    nx.draw_networkx_labels(graph, pos, labels={n: d['mention'] for n, d in graph.nodes(data=True)}, font_size=10)
+    nx.draw_networkx_edge_labels(graph, pos, labels={n: d['mention'] for n, d in graph.nodes(data=True)}, font_size=10)
 
     nx.draw_networkx_edges(graph, pos, width=1.0, alpha=0.5)
     plt.axis('off')
@@ -321,8 +323,8 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
                 out = rel_pipe(masked_text)[0]
 
                 if out['label'] == 'LABEL_1':
-                    # TODO: Add the score as the probability
-                    relations.append((gene_entity, disease_entity))
+                    # create new relations with edge corresponding to biosearch confidence
+                    relations.append((gene_entity, disease_entity, out['score']))
             except Exception as e:
                 print(e)
                 continue
