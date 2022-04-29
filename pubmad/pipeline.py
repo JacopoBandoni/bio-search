@@ -62,8 +62,8 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
                 G.nodes[entity.mesh_id[0]]['pmid'] += ',' + entity.pmid
 
         # Add the relations to the graph as edges
-        for src, dst in relations:
-            G.add_edge(src.mesh_id[0], dst.mesh_id[0])
+        for src, dst, weight in relations:
+            G.add_edge(src.mesh_id[0], dst.mesh_id[0], weight=weight)
         i += 1
         print(f'Processing article {i}/{N}')
 
