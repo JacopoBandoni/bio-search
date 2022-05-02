@@ -43,7 +43,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         if use_biobert == False:
             entities: List[Entity] = extract_entities(article, source)
 
-            relations: List[Tuple[Entity, Entity]] = extract_naive_relations(entities)
+            relations: List[Tuple[Entity, Entity, float]] = extract_naive_relations(entities)
         else:
             entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
             if bern_calls_counter % 100 == 0:

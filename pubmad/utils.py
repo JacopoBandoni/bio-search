@@ -210,7 +210,7 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
     plt.show()
 
 
-def extract_naive_relations(entities: List[Entity]) -> List[Tuple[Entity, Entity]]:
+def extract_naive_relations(entities: List[Entity]) -> List[Tuple[Entity, Entity, float]]:
     '''
     Extract relations from a list of entities.
 
@@ -218,13 +218,14 @@ def extract_naive_relations(entities: List[Entity]) -> List[Tuple[Entity, Entity
         entities (List[Entity]): A list of entities.
 
     Returns:
-        List[Tuple[Entity, Entity]]: A list of relations.
+        List[Tuple[Entity, Entity, float]]: A list of relations.
     '''
     # Connect all the entities to each other.
     relations = []
     for entity1, entity2 in product(entities, entities):
         if entity1.mesh_id != entity2.mesh_id:
-            relations.append((entity1, entity2))
+            # 1 meaning that the relation is present.
+            relations.append((entity1, entity2, 1))
     return relations
 
 
