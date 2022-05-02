@@ -55,7 +55,7 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
                            str(end_year) + '"[Date - Create]))'
 
     handle = Entrez.esearch(db='pubmed', 
-                            sort='relevance', 
+                            sort='first+author', 
                             retmax=max_results,
                             retmode='xml',
                             usehistory='y', 
