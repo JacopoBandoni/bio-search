@@ -17,11 +17,11 @@ from joblib import Parallel, delayed
 import copy
 from Bio import Entrez, Medline
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModel, AutoModelForSequenceClassification
 from transformers import pipeline
 
-rel_tokenizer = AutoTokenizer.from_pretrained("./pubmad/biobert/relation-extraction")
-rel_model = AutoModelForSequenceClassification.from_pretrained("./pubmad/biobert/relation-extraction")
+rel_tokenizer = AutoTokenizer.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
+rel_model = AutoModelForSequenceClassification.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
 
 rel_model.eval()
 
@@ -203,7 +203,7 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
     nx.draw_networkx_nodes(graph, pos, nodelist=disease_nodes, node_color='b', node_size=100, alpha=0.8, label='disease')
     nx.draw_networkx_nodes(graph, pos, nodelist=other_nodes, node_color='g', node_size=100, alpha=0.8, label='other')
 
-    nx.draw_networkx_edge_labels(graph, pos, labels={n: d['mention'] for n, d in graph.nodes(data=True)}, font_size=10)
+    nx.draw_networkx_labels(graph, pos, labels={n: d['mention'] for n, d in graph.nodes(data=True)}, font_size=10)
 
     nx.draw_networkx_edges(graph, pos, width=1.0, alpha=0.5)
     plt.axis('off')
@@ -263,11 +263,8 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
         Tuple[List[Entity], List[Tuple[Entity, Entity]], bool]: A tuple of entities, relations and whether the cache was used.
 
     """
-    if len(str(article.pmid)) > 12:
-        print(article.abstract)
-        # TODO: Fixare articoli con PMID multipli...
-        return [], [], True
-    file_name = str(article.pmid) + '.txt'
+    # TODO: Find a better way to handle articles with multiple pmids
+    file_name = str(article.pmid)[:128] + '.txt'
     path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
