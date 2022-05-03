@@ -30,7 +30,7 @@ rel_model = rel_model.to(device)
 
 rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0 if device=='cuda' else -1)
 
-def download_articles_biopython(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '') -> List[Article]:
+def download_articles_biopython(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research :str = 'relevance') -> List[Article]:
     """
     Download articles from PubMed using BioPython library.
     Args:
@@ -53,12 +53,11 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
     Entrez.email = 'pubmadbiosearch@gmail.com'
     query = '(' + title + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' + \
                            str(end_year) + '"[Date - Create]))'
-
+    query = 'diabetes'
     handle = Entrez.esearch(db='pubmed', 
-                            sort='first+author', 
+                            sort=type_research, 
                             retmax=max_results,
-                            retmode='xml',
-                            usehistory='y', 
+                            retmode='xml', 
                             term=query)
     results = Entrez.read(handle)               
     id_list = results['IdList']
@@ -68,13 +67,15 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
     results = Medline.parse(handle)
     results = list(results)
     articles = []
+    print(results[1])
     for article in results:
         abstract = article.get("AB", "?")
-        if abstract != "?":
+        title = article.get("TI", "?")
+        if abstract != "?" and title != "?":
             if abstract.find("This article has been withdrawn at the request of the author(s) and/or editor") == -1 and \
                abstract.find("An amendment to this paper has been published and can be accessed via a link at the top of the paper") == -1 and \
-               abstract.find("This corrects the article") == -1 and abstract.find("A Correction to this paper has been published") == -1:
-                articles.append(Article(title=article['TI'], abstract=abstract, 
+               abstract.find("This corrects the article") == -1 and abstract.find("A Correction to this paaper has been published") == -1:
+                articles.append(Article(title=title, abstract=abstract, 
                                         pmid=article['PMID'], full_text='', publication_data=datetime.strptime(article['DP'][:4], '%Y')))
 
     print("Found {} articles".format(len(articles)))
