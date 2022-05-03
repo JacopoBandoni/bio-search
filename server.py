@@ -18,8 +18,8 @@ def API_get_graph():
     use_biobert = bool(int(use_biobert))
     G = get_graph(query, max_publications=max_publications, start_year=start_year, end_year=end_year, use_biobert=use_biobert,
         clear_cache=False, use_pymed=False)
-    cy_data = json.dumps(nx.readwrite.json_graph.cytoscape_data(G))
     communities = get_communities(G, 'weight', seed=42)
+    cy_data = json.dumps(nx.readwrite.json_graph.cytoscape_data(G))
     response = {
         'cy_data': cy_data,
         'communities': communities

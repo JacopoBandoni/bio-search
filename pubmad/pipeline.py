@@ -7,8 +7,9 @@ from typing import List, Tuple
 from datetime import datetime
 import time
 
-def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42):
+def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -> List[List[str]]:
     comm = nx_comm.louvain_communities(G, weight_label, seed=seed)
+    comm = [list(c) for c in comm if len(list(c)) > 1]
     return comm
 
 def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, use_pymed: bool = True) -> nx.Graph:
