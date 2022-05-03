@@ -17,11 +17,11 @@ from joblib import Parallel, delayed
 import copy
 from Bio import Entrez, Medline
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModel
 from transformers import pipeline
 
-rel_tokenizer = AutoTokenizer.from_pretrained("./pubmad/biobert/relation-extraction")
-rel_model = AutoModelForSequenceClassification.from_pretrained("./pubmad/biobert/relation-extraction")
+rel_tokenizer = AutoTokenizer.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
+rel_model = AutoModel.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
 
 rel_model.eval()
 
