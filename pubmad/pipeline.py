@@ -42,8 +42,9 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         articles: List[Article] = download_articles_biopython(title=query, start_year=start_year, end_year=end_year, max_results = max_publications)
 
     bern_calls_counter = 1
-    i = 0
+    i = 0 # current article
     N = len(articles)
+    start = time.time()
 
     for article in articles:
         if use_biobert == False:
@@ -51,10 +52,12 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
 
             relations: List[Tuple[Entity, Entity, float]] = extract_naive_relations(entities)
         else:
-            entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
             if bern_calls_counter % 100 == 0:
-                print('Sleeping for 100 seconds')
-                time.sleep(100)
+                # We made 100 calls, we must wait for 100s - start to not get banned
+                print("Sleeping for {}s".format(110 - (time.time() - start)))
+                time.sleep(110 - (time.time() - start))
+                start = time.time()
+            entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
             if not used_cache:
                 bern_calls_counter += 1
         
