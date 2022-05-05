@@ -55,7 +55,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
             if bern_calls_counter % 100 == 0:
                 # We made 100 calls, we must wait for 100s - start to not get banned
                 print("Sleeping for {}s".format(110 - (time.time() - start)))
-                time.sleep(110 - (time.time() - start))
+                time.sleep(max(110 - (time.time() - start), 20))
                 start = time.time()
             entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
             if not used_cache:
