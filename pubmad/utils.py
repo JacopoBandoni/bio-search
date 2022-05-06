@@ -51,13 +51,19 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
             return pickle.load(f)
 
     Entrez.email = 'pubmadbiosearch@gmail.com'
-    query = '(' + title + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' + \
-                           str(end_year) + '"[Date - Create]))'
-    query = 'diabetes'
+
+    if author != "":
+        query = '(' + title + ') AND (' + author + '[Author])'
+    else:
+        query = title 
+
     handle = Entrez.esearch(db='pubmed', 
                             sort=type_research, 
                             retmax=max_results,
                             retmode='xml', 
+                            datetype='pdat',
+                            mindate=str(start_year),
+                            maxdate=str(end_year),
                             term=query)
     results = Entrez.read(handle)               
     id_list = results['IdList']
