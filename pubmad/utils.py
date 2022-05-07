@@ -17,6 +17,9 @@ from joblib import Parallel, delayed
 import copy
 from Bio import Entrez, Medline
 
+import nltk
+nltk.download('punkt')
+
 from transformers import AutoTokenizer, AutoModel, AutoModelForSequenceClassification
 from transformers import pipeline
 
@@ -162,15 +165,22 @@ def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]
     # Query BERN2 server for entities.
     extracted = False
     bern_result = None
-    while not extracted:
+
+    i = 0
+
+    while not extracted and i < 3:
         try:
             bern_result = query_plain(text)
             extracted = True
         except Exception as e:
             print("Error querying BERN2 server")
-            print("Sleep for 10 seconds and try again to not get banned by BERN2")
-            time.sleep(10)
+            print("Sleep for 3 seconds and try again to not get banned by BERN2")
+            time.sleep(3)
+            i += 1
             continue
+    
+    if i == 3:
+        return []
 
     # Parse the result.
     annotations = bern_result['annotations']
