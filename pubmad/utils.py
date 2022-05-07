@@ -111,7 +111,12 @@ def download_articles(query: str, start_year: int, end_year: int, max_results: i
     Returns:
         List[Article] A list of articles.
     """
-    current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+    current_path = Path(os.getcwd()) / 'cache'
+
+    if not os.path.exists(current_path):
+        # create directory
+        os.mkdir(current_path)
+
     file_name = '{}_{}_{}_{}.txt'.format(query, start_year, end_year, max_results)
     if os.path.exists(current_path / file_name):
         if clear_cache:
@@ -283,7 +288,15 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     """
     # TODO: Find a better way to handle articles with multiple pmids
     file_name = str(article.pmid)[:128] + '.txt'
-    path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+    path = Path(os.getcwd()) / 'cache'
+    
+    if not os.path.exists(path / 'entities'):
+        # create directory
+        os.mkdir(path / 'entities')
+
+    if not os.path.exists(path / 'relations'):
+        # create directory
+        os.mkdir(path / 'relations')
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
         if clear_cache:
@@ -297,6 +310,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
             with open(path / 'relations' / file_name, 'rb') as f:
                 relations = pickle.load(f)
             return entities, relations, True
+
 
     text = ''
     if source == 'abstract':
