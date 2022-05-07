@@ -1,7 +1,7 @@
 import os
 import networkx as nx
 import networkx.algorithms.community as nx_comm
-from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations, download_articles_biopython
+from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations
 from pubmad.types import Article, Entity
 from typing import List, Tuple
 from datetime import datetime
