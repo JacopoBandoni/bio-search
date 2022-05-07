@@ -96,61 +96,6 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
         pickle.dump(articles, f)
     return articles
 
-<<<<<<< HEAD
-def download_articles(query: str, start_year: int, end_year: int, max_results: int = 100, clear_cache: bool = False, author: str = '') -> List[Article]:
-    """
-    Download articles from PubMed.
-
-    Args:
-        query (str): The query to search for.
-        start_year (int): The start year to search for.
-        end_year (int): The end year to search for.
-        max_results (int): The maximum number of results to return.
-        clear_cache (bool): Whether to clear the cache.
-        author (str): The author to search for, leave empty to search for all authors.
-
-    Returns:
-        List[Article] A list of articles.
-    """
-    current_path = Path(os.getcwd()) / 'cache'
-
-    if not os.path.exists(current_path):
-        # create directory
-        os.mkdir(current_path)
-
-    file_name = '{}_{}_{}_{}.txt'.format(query, start_year, end_year, max_results)
-    if os.path.exists(current_path / file_name):
-        if clear_cache:
-            print("Removing cache...")
-            os.remove(current_path / file_name)
-        else:
-            print("Loading from cache...")
-            with open(current_path / file_name, 'rb') as f:
-                return pickle.load(f)
-    
-    pubmed = PubMed(tool="PubMad", email="pubmadbiosearch@gmail.com")
-    results = pubmed.query('(' + query + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' +
-                           str(end_year) + '"[Date - Create]))', max_results=max_results)
-                           
-    articles = []
-    for article in results:
-        article = article.toJSON()
-        article = json.loads(article)
-        if article['abstract'] == None:
-            # TODO: Handle this case. (either by filtering within the query or by skipping the article)
-            continue
-        articles.append(Article(title=article['title'], abstract=article['abstract'], 
-                                pmid=article['pubmed_id'], full_text='', publication_data=datetime.strptime(article['publication_date'][:4], '%Y')))
-
-    # save articles to pickle file
-    with open(current_path / file_name, 'wb') as f:
-        pickle.dump(articles, f)
-    
-    print(f'Retrived {len(articles)} articles')
-    return articles
-
-=======
->>>>>>> 21d8bfb113b072a6bbe31f7cd0714df44122cc7e
 
 def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]:
     """
@@ -291,7 +236,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     """
     # TODO: Find a better way to handle articles with multiple pmids
     file_name = str(article.pmid)[:128] + '.txt'
-<<<<<<< HEAD
+    file_name = file_name.replace('\n', '_')
     path = Path(os.getcwd()) / 'cache'
     
     if not os.path.exists(path / 'entities'):
@@ -301,10 +246,6 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     if not os.path.exists(path / 'relations'):
         # create directory
         os.mkdir(path / 'relations')
-=======
-    file_name = file_name.replace('\n', '_')
-    path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
->>>>>>> 21d8bfb113b072a6bbe31f7cd0714df44122cc7e
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
         if clear_cache:
