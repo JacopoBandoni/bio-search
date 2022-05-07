@@ -35,7 +35,7 @@ rel_model = rel_model.to(device)
 
 rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0 if device=='cuda' else -1)
 
-def download_articles_biopython(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research :str = 'relevance') -> List[Article]:
+def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research :str = 'relevance') -> List[Article]:
     """
     Download articles from PubMed using BioPython library.
     Args:
@@ -96,6 +96,7 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
         pickle.dump(articles, f)
     return articles
 
+<<<<<<< HEAD
 def download_articles(query: str, start_year: int, end_year: int, max_results: int = 100, clear_cache: bool = False, author: str = '') -> List[Article]:
     """
     Download articles from PubMed.
@@ -148,6 +149,8 @@ def download_articles(query: str, start_year: int, end_year: int, max_results: i
     print(f'Retrived {len(articles)} articles')
     return articles
 
+=======
+>>>>>>> 21d8bfb113b072a6bbe31f7cd0714df44122cc7e
 
 def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]:
     """
@@ -288,6 +291,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     """
     # TODO: Find a better way to handle articles with multiple pmids
     file_name = str(article.pmid)[:128] + '.txt'
+<<<<<<< HEAD
     path = Path(os.getcwd()) / 'cache'
     
     if not os.path.exists(path / 'entities'):
@@ -297,6 +301,10 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     if not os.path.exists(path / 'relations'):
         # create directory
         os.mkdir(path / 'relations')
+=======
+    file_name = file_name.replace('\n', '_')
+    path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+>>>>>>> 21d8bfb113b072a6bbe31f7cd0714df44122cc7e
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
         if clear_cache:
