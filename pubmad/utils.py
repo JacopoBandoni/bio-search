@@ -236,6 +236,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     """
     # TODO: Find a better way to handle articles with multiple pmids
     file_name = str(article.pmid)[:128] + '.txt'
+    file_name = file_name.replace('/n', '_')
     path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
