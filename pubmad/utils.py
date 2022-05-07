@@ -16,6 +16,8 @@ import time
 from joblib import Parallel, delayed
 import copy
 from Bio import Entrez, Medline
+from pyvis.network import Network
+import re
 
 import nltk
 nltk.download('punkt')
@@ -410,3 +412,57 @@ def find_entity(entity: Entity, span_sentences: List[List[int]]) -> int:
         if span_sentences[i][0] <= entity.span_begin and entity.span_end <= span_sentences[i][1]:
             return i
     return -1
+
+def add_title_node(G, n, d):
+  result_html = f"""
+  <h3>{d['mention']}</h3>
+  """
+  #articles: 
+  #  <ul>
+  #"""
+  #pmids = re.split("[,\\n]", d['pmid'])
+  #for pmid in pmids:
+  #  result_html += f"<li>{pmid}</li>"
+  #result_html += "</ul>"
+  return result_html
+  
+def add_title_edge(G, edge):
+  #find intersection between pmids of the two nodes
+  node1 = dict(G.nodes(data=True))[edge[0]]
+  node2 = dict(G.nodes(data=True))[edge[1]]
+  n1_pmids = re.split(",",node1['pmid'])
+  n2_pmids = re.split(",",node2['pmid'])
+  intersection = list(set(n1_pmids) & set(n2_pmids))
+
+  #create html 
+  result_html = f"""<p>common articles between <strong>{node1['mention']}</strong> and <strong>{node2['mention']}</strong></p>
+  
+  <ul>"""
+  for pmid in intersection:
+    result_html += f"<li>{pmid}</li>"
+  result_html += "</ul>"
+  return result_html
+  
+
+def html_graph(G, name="nodes"):
+  net = Network(notebook=True)
+
+  #add nodes
+  for n, d in G.nodes(data=True):
+    color = '#ccc'
+    if d['type'] == 'gene':
+      color = '#0DA3E4'
+    elif d['type'] == 'disease':
+      color = '#bf4d2d'
+    net.add_node(n, d['mention'], color=color, title= add_title_node(G, n, d))
+
+  #add edges
+  for edge in G.edges(data='True'):
+    add_title_edge(G,edge)
+    weight = G.get_edge_data(edge[0], edge[1])['weight']
+    net.add_edge(edge[0], edge[1], value=weight, color='#F0EB5A', title=add_title_edge(G,edge))
+
+  net.show_buttons(filter_=['physics'])
+  net.show(name + ".html")
+
+  return net;
