@@ -47,7 +47,7 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
     Returns:
         List[Article] A list of articles.
     """
-    current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+    current_path = Path(os.getcwd()) / 'cache'
     file_name = '{}_{}_{}_{}.txt'.format(title, start_year, end_year, max_results)
     if os.path.exists(current_path / file_name):
         print("Loading from cache...")
