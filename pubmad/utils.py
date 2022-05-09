@@ -18,6 +18,7 @@ import copy
 from Bio import Entrez, Medline
 from pyvis.network import Network
 import re
+import random
 
 import nltk
 nltk.download('punkt')
@@ -410,11 +411,32 @@ def add_title_edge(G, edge):
   result_html += "</ul>"
   return result_html
   
+def _html_graph_communities(G, communities, net):
+    #generate random color for each community
+    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+             for i in range(len(communities))]
+    
+    for i, community in enumerate(communities):
+        for node_id in community:
+            node = net.get_node(node_id)
+            node_type = dict(G.nodes(data=True))[node_id]['type']
+            node['color'] = colors[i]
+            
+            if (node_type == 'gene'):
+                node['shape'] = 'dot'
+            elif (node_type == 'disease'):
+                node['shape'] = 'diamond'
+            
+    
 
-def html_graph(G, name="nodes"):
+def html_graph(G, name="nodes", communities=None, hide_isolated_nodes = True):
+    
+    
+  if hide_isolated_nodes:
+    G.remove_nodes_from(list(nx.isolates(G)))
+    
   net = Network(notebook=True)
 
-  #add nodes
   for n, d in G.nodes(data=True):
     color = '#ccc'
     if d['type'] == 'gene':
@@ -422,6 +444,10 @@ def html_graph(G, name="nodes"):
     elif d['type'] == 'disease':
       color = '#bf4d2d'
     net.add_node(n, d['mention'], color=color, title= add_title_node(G, n, d))
+
+  #if communities is not None and len(communities) > 0 
+  if communities is not None and len(communities) > 0:
+      _html_graph_communities(G, communities, net)
 
   #add edges
   for edge in G.edges(data='True'):
