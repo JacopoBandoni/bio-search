@@ -1,7 +1,7 @@
 import os
 import networkx as nx
 import networkx.algorithms.community as nx_comm
-from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations, download_articles_biopython
+from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations
 from pubmad.types import Article, Entity
 from typing import List, Tuple
 from datetime import datetime
@@ -12,7 +12,7 @@ def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -
     comm = [list(c) for c in comm if len(list(c)) > 1]
     return comm
 
-def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, use_pymed: bool = True) -> nx.Graph:
+def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False) -> nx.Graph:
     '''
     Returns a networkx graph containing relationships between genes and diseases.
     
@@ -26,8 +26,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
             save_graph (bool): Whether to save the graph or not. Defaults to True.
             G (nx.Graph): The graph to be used. Defaults to an empty graph.
             clear_cache (bool): Whether to clear the cache or not. Defaults to False.
-            use_pymed (bool): Whether to use the pymed module or not. Defaults to True.
-        
+            
         Returns
             nx.Graph (networkx.Graph): A networkx graph containing relationships between genes and diseases.
     '''
@@ -36,10 +35,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         G.clear()
 
     # Download the articles using pymed
-    if use_pymed:
-        articles: List[Article] = download_articles(query, start_year, end_year, max_publications, clear_cache)
-    else:
-        articles: List[Article] = download_articles_biopython(title=query, start_year=start_year, end_year=end_year, max_results = max_publications)
+    articles: List[Article] = download_articles(title=query, start_year=start_year, end_year=end_year, max_results = max_publications)
 
     bern_calls_counter = 1
     i = 0 # current article

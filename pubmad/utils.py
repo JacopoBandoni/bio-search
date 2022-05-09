@@ -18,6 +18,7 @@ import copy
 from Bio import Entrez, Medline
 from pyvis.network import Network
 import re
+import random
 
 import nltk
 nltk.download('punkt')
@@ -35,7 +36,7 @@ rel_model = rel_model.to(device)
 
 rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0 if device=='cuda' else -1)
 
-def download_articles_biopython(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research :str = 'relevance') -> List[Article]:
+def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research :str = 'relevance') -> List[Article]:
     """
     Download articles from PubMed using BioPython library.
     Args:
@@ -47,7 +48,11 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
     Returns:
         List[Article] A list of articles.
     """
-    current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+    current_path = Path(os.getcwd()) / 'cache'
+
+    if not os.path.exists(current_path):
+        os.mkdir(current_path)
+
     file_name = '{}_{}_{}_{}.txt'.format(title, start_year, end_year, max_results)
     if os.path.exists(current_path / file_name):
         print("Loading from cache...")
@@ -94,53 +99,6 @@ def download_articles_biopython(title: str, start_year: int, end_year: int, max_
     # save articles to pickle file
     with open(current_path / file_name, 'wb') as f:
         pickle.dump(articles, f)
-    return articles
-
-def download_articles(query: str, start_year: int, end_year: int, max_results: int = 100, clear_cache: bool = False, author: str = '') -> List[Article]:
-    """
-    Download articles from PubMed.
-
-    Args:
-        query (str): The query to search for.
-        start_year (int): The start year to search for.
-        end_year (int): The end year to search for.
-        max_results (int): The maximum number of results to return.
-        clear_cache (bool): Whether to clear the cache.
-        author (str): The author to search for, leave empty to search for all authors.
-
-    Returns:
-        List[Article] A list of articles.
-    """
-    current_path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
-    file_name = '{}_{}_{}_{}.txt'.format(query, start_year, end_year, max_results)
-    if os.path.exists(current_path / file_name):
-        if clear_cache:
-            print("Removing cache...")
-            os.remove(current_path / file_name)
-        else:
-            print("Loading from cache...")
-            with open(current_path / file_name, 'rb') as f:
-                return pickle.load(f)
-    
-    pubmed = PubMed(tool="PubMad", email="pubmadbiosearch@gmail.com")
-    results = pubmed.query('(' + query + '[Title]) AND ' + '(' + author + '[Author])' + ' AND ' + '(("' + str(start_year) + '"[Date - Create] : "' +
-                           str(end_year) + '"[Date - Create]))', max_results=max_results)
-                           
-    articles = []
-    for article in results:
-        article = article.toJSON()
-        article = json.loads(article)
-        if article['abstract'] == None:
-            # TODO: Handle this case. (either by filtering within the query or by skipping the article)
-            continue
-        articles.append(Article(title=article['title'], abstract=article['abstract'], 
-                                pmid=article['pubmed_id'], full_text='', publication_data=datetime.strptime(article['publication_date'][:4], '%Y')))
-
-    # save articles to pickle file
-    with open(current_path / file_name, 'wb') as f:
-        pickle.dump(articles, f)
-    
-    print(f'Retrived {len(articles)} articles')
     return articles
 
 
@@ -283,7 +241,16 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     """
     # TODO: Find a better way to handle articles with multiple pmids
     file_name = str(article.pmid)[:128] + '.txt'
-    path = Path(os.path.dirname(os.path.abspath(__file__))) / 'cache'
+    file_name = file_name.replace('\n', '_')
+    path = Path(os.getcwd()) / 'cache'
+    
+    if not os.path.exists(path / 'entities'):
+        # create directory
+        os.mkdir(path / 'entities')
+
+    if not os.path.exists(path / 'relations'):
+        # create directory
+        os.mkdir(path / 'relations')
 
     if os.path.exists(path / 'entities' / file_name) and os.path.exists(path / 'relations' / file_name):
         if clear_cache:
@@ -297,6 +264,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
             with open(path / 'relations' / file_name, 'rb') as f:
                 relations = pickle.load(f)
             return entities, relations, True
+
 
     text = ''
     if source == 'abstract':
@@ -443,11 +411,32 @@ def add_title_edge(G, edge):
   result_html += "</ul>"
   return result_html
   
+def _html_graph_communities(G, communities, net):
+    #generate random color for each community
+    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+             for i in range(len(communities))]
+    
+    for i, community in enumerate(communities):
+        for node_id in community:
+            node = net.get_node(node_id)
+            node_type = dict(G.nodes(data=True))[node_id]['type']
+            node['color'] = colors[i]
+            
+            if (node_type == 'gene'):
+                node['shape'] = 'dot'
+            elif (node_type == 'disease'):
+                node['shape'] = 'diamond'
+            
+    
 
-def html_graph(G, name="nodes"):
+def html_graph(G, name="nodes", communities=None, hide_isolated_nodes = True):
+    
+    
+  if hide_isolated_nodes:
+    G.remove_nodes_from(list(nx.isolates(G)))
+    
   net = Network(notebook=True)
 
-  #add nodes
   for n, d in G.nodes(data=True):
     color = '#ccc'
     if d['type'] == 'gene':
@@ -455,6 +444,10 @@ def html_graph(G, name="nodes"):
     elif d['type'] == 'disease':
       color = '#bf4d2d'
     net.add_node(n, d['mention'], color=color, title= add_title_node(G, n, d))
+
+  #if communities is not None and len(communities) > 0 
+  if communities is not None and len(communities) > 0:
+      _html_graph_communities(G, communities, net)
 
   #add edges
   for edge in G.edges(data='True'):
