@@ -12,8 +12,6 @@ and execute:
 > npm start
 
 ## OBIETTIVI:
-- Con CHEMPROT possiamo estrarre le relazioni tra 'chemical/drug' e 'genes/protein'
-
 mancherebbero le relazioni gene-gene e chemical-chemical
 
 

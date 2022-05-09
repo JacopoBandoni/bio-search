@@ -19,6 +19,7 @@ from Bio import Entrez, Medline
 from pyvis.network import Network
 import re
 import random
+import numpy as np
 
 import nltk
 nltk.download('punkt')
@@ -150,7 +151,7 @@ def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]
     annotations = bern_result['annotations']
     entities = []
     for entity in annotations:
-        if (entity['obj'] == 'disease' or entity['obj'] == 'gene'):
+        if (entity['obj'] == 'disease' or entity['obj'] == 'gene' or entity['obj'] == 'drug'):
             pmid = article.pmid
             if type(article.pmid) == list:
                 pmid = article.pmid[0]
@@ -288,17 +289,26 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
             sentence_index_drug = find_entity(drug_entity, span_sentences)
 
             masked_text = ''
-            if gene_entity.span_begin < disease_entity.span_begin:
+            if gene_entity.span_begin < drug_entity.span_begin:
                 # wrap the gene_entity in << >>
-                # and the disease with [[ ]]
-                masked_text = text[:gene_entity.span_begin] + "<<" + text[gene_entity.span_begin:gene_entity.span_end] + ">>" + text[gene_entity.span_end:disease_entity.span_begin] + "[[" + text[disease_entity.span_begin:disease_entity.span_end] + "]]" + text[disease_entity.span_end:]
+                # and the drug with [[ ]]
+               masked_text = text[span_sentences[sentence_index_gene][0]:gene_entity.span_begin] + "<< " + text[gene_entity.span_begin:gene_entity.span_end] + " >>" + text[gene_entity.span_end:drug_entity.span_begin] + "[[ " + text[drug_entity.span_begin:drug_entity.span_end] + " ]]" + text[drug_entity.span_end:span_sentences[sentence_index_drug][1]]
             else:
-                # wrap the gene with [[ ]]
-                # and the disease with << >>
-                masked_text = text[:disease_entity.span_begin] + "[[" + text[disease_entity.span_begin:disease_entity.span_end] + "]]" + text[disease_entity.span_end:gene_entity.span_begin] + "<<" + text[gene_entity.span_begin:gene_entity.span_end] + ">>" + text[gene_entity.span_end:]
-
-            print(masked_text)
-            break
+                # wrap the drug_entity in << >>
+                # and the gene with [[ ]]
+                masked_text = text[span_sentences[sentence_index_drug][0]:drug_entity.span_begin] + "<< " + text[drug_entity.span_begin:drug_entity.span_end] + " >>" + text[drug_entity.span_end:gene_entity.span_begin] + "[[ " + text[gene_entity.span_begin:gene_entity.span_end] + " ]]" + text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
+            try:
+                inputs = chemprot_tokenizer(masked_text, return_tensors="pt")
+                outputs = chemprot_model(**inputs)
+                class_logits = outputs["logits"].detach().cpu().numpy()
+                class_logits = class_logits[0]
+                class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits))
+                class_idx, class_prob = max(enumerate(class_probs), key=lambda x: x[1])
+                if class_prob > 0.5:
+                    relations.append((gene_entity, drug_entity, class_prob))
+            except Exception as e:
+                print(e)
+                continue
 
         # extract gene-disease relations using biobert
         for disease_entity in disease_entities:
