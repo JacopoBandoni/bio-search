@@ -36,10 +36,12 @@ chemprot_tokenizer = AutoTokenizer.from_pretrained(
 rel_tokenizer = AutoTokenizer.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
 rel_model = AutoModelForSequenceClassification.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
 
+chemprot_model.eval()
 rel_model.eval()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 rel_model = rel_model.to(device)
+chemprot_model = chemprot_model.to(device)
 
 rel_pipe = pipeline(task='text-classification', model=rel_model, tokenizer=rel_tokenizer, device=0 if device=='cuda' else -1)
 
@@ -299,7 +301,7 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
                 # and the gene with [[ ]]
                 masked_text = text[span_sentences[sentence_index_drug][0]:drug_entity.span_begin] + "<< " + text[drug_entity.span_begin:drug_entity.span_end] + " >>" + text[drug_entity.span_end:gene_entity.span_begin] + "[[ " + text[gene_entity.span_begin:gene_entity.span_end] + " ]]" + text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
             try:
-                inputs = chemprot_tokenizer(masked_text, return_tensors="pt")
+                inputs = chemprot_tokenizer(masked_text, return_tensors="pt").to(device)
                 outputs = chemprot_model(**inputs)
                 class_logits = outputs["logits"].detach().cpu().numpy()
                 class_logits = class_logits[0]
