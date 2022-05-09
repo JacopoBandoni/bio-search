@@ -50,17 +50,12 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
 
             relations: List[Tuple[Entity, Entity, float]] = extract_naive_relations(entities)
         else:
-            # if bern_calls_counter % 100 == 0:
-            #     # We made 100 calls, we must wait for 100s - start to not get banned
-            #     print("Sleeping for {}s".format(110 - (time.time() - start)))
-            #     time.sleep(max(110 - (time.time() - start), 20))
-            #     start = time.time()
             entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
             if not used_cache:
                 bern_calls_counter += 1
                 elapsed = time.time() - start
-                if elapsed < 1:
-                    time.sleep(1.1 - elapsed)
+                if elapsed < 0.34:
+                    time.sleep(0.35 - elapsed)
                 start = time.time()
         
         # Add the entities to the graph as nodes
