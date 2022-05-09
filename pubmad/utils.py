@@ -1,3 +1,4 @@
+from tkinter import N
 import torch
 from typing import List, Tuple
 from pymed import PubMed 
@@ -96,7 +97,7 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
                abstract.find("An amendment to this paper has been published and can be accessed via a link at the top of the paper") == -1 and \
                abstract.find("This corrects the article") == -1 and abstract.find("A Correction to this paaper has been published") == -1:
                 articles.append(Article(title=title, abstract=abstract, 
-                                        pmid=article['PMID'], full_text='', publication_data=datetime.strptime(article['DP'][:4], '%Y')))
+                                        pmid=article['PMID'], full_text='', publication_data=None))
 
     print("Found {} articles".format(len(articles)))
 
@@ -434,6 +435,8 @@ def _html_graph_communities(G, communities, net):
                 node['shape'] = 'dot'
             elif (node_type == 'disease'):
                 node['shape'] = 'diamond'
+            elif (node_type == 'drug'):
+                node['shape'] = 'star'
             
     
 
@@ -451,6 +454,8 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes = True):
       color = '#0DA3E4'
     elif d['type'] == 'disease':
       color = '#bf4d2d'
+    elif d['type'] == 'drug':
+        color = '#5ef951'
     net.add_node(n, d['mention'], color=color, title= add_title_node(G, n, d))
 
   #if communities is not None and len(communities) > 0 
