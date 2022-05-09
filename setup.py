@@ -30,7 +30,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="pubmad",
     version=pubmad_version,
-    package_data={"pubmad": ["VERSION"]}
+    package_data={"pubmad": ["VERSION"]},
     author='Jacopo Bandoni, Pier Paolo Tarasco, William Simoni, Marco Natali',
     author_email="bandoni.jacopo@gmail.com",
     description="Useful tools to work with biology",
