@@ -8,7 +8,7 @@ with open('README.md') as readme_file:
 
 setup(
     name="pubmad",
-    version="0.25",
+    version="0.26",
     author='Jacopo Bandoni, Pier Paolo Tarasco, William Simoni, Marco Natali',
     author_email="bandoni.jacopo@gmail.com",
     description="Useful tools to work with biology",
