@@ -3,12 +3,34 @@ from setuptools import setup, find_packages
 with open('README.md') as readme_file:
     README = readme_file.read()
 
-# with open('HISTORY.md') as history_file:
-#     HISTORY = history_file.read()
+pubmad_version = (
+    subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE)
+    .stdout.decode("utf-8")
+    .strip()
+)
+
+if "-" in cf_remote_version:
+    # when not on tag, git describe outputs: "1.3.3-22-gdf81228"
+    # pip has gotten strict with version numbers
+    # so change it to: "1.3.3+22.git.gdf81228"
+    # See: https://peps.python.org/pep-0440/#local-version-segments
+    v,i,s = cf_remote_version.split("-")
+    pubmad_version = v + "+" + i + ".git." + s
+
+assert "-" not in pubmad_version
+assert "." in pubmad_version
+
+assert os.path.isfile("pubmad/version.py")
+with open("pubmad/VERSION", "w", encoding="utf-8") as fh:
+    fh.write(f"{pubmad_version}\n")
+
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
 
 setup(
     name="pubmad",
-    version="0.26",
+    version=pubmad_version,
+    package_data={"pubmad": ["VERSION"]}
     author='Jacopo Bandoni, Pier Paolo Tarasco, William Simoni, Marco Natali',
     author_email="bandoni.jacopo@gmail.com",
     description="Useful tools to work with biology",
