@@ -88,7 +88,6 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
     results = Medline.parse(handle)
     results = list(results)
     articles = []
-    print(results[1])
     for article in results:
         abstract = article.get("AB", "?")
         title = article.get("TI", "?")
@@ -210,25 +209,6 @@ def extract_naive_relations(entities: List[Entity]) -> List[Tuple[Entity, Entity
             relations.append((entity1, entity2, 1))
     return relations
 
-
-# def call_biober_rel(gene_disease_text: Tuple[Entity, Entity, str]):
-#     # TODO: Delete this if we don't use cpu cores
-#     gene_entity, disease_entity, text = gene_disease_text
-
-#     masked_text = ''
-#     if gene_entity.span_begin < disease_entity.span_begin:
-#         masked_text = text[:gene_entity.span_begin] + "@GENE$" + text[gene_entity.span_end:disease_entity.span_begin] + "@DISEASE$" + text[disease_entity.span_end:]
-#     else:
-#         masked_text = text[:disease_entity.span_begin] + "@DISEASE$" + text[disease_entity.span_end:gene_entity.span_begin] + "@GENE$" + text[gene_entity.span_end:]
-    
-#     try:
-#         out = rel_pipe(masked_text)[0]
-#     except:
-#         return (None, None)
-#     if out['label'] == 'LABEL_1':
-#         # TODO: Add the score as the probability
-#         return (gene_entity, disease_entity)
-#     return (None, None)
 
 def extract_biobert_relations(article : Article, source: str = 'abstract', clear_cache: bool = False) -> Tuple[List[Entity], List[Tuple[Entity, Entity]], bool]:
     """
