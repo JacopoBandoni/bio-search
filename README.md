@@ -12,15 +12,13 @@ and execute:
 > npm start
 
 ## OBIETTIVI:
-- fixare pymed!
-- aggiungere pesi agli edges
-- visualizzazione con dash (mettere archi più o meno grossi a seconda del peso, link sugli archi)
-- algoritmi di centralità e communities (già integrati in network x)
-- migliorare throttler
+- Con CHEMPROT possiamo estrarre le relazioni tra 'chemical/drug' e 'genes/protein'
+
+mancherebbero le relazioni gene-gene e chemical-chemical
+
+
 - Aggiungere biobert QA
 
 
 Secondario:
 - [EFFICIENZA] Per estrarre le relazioni converrebbe chiamare il modello in batch e non una singola frase alla volta
-- In qualche modo pulire la cache
-- Vedere pacchetto pip e caricare su hugginface (o drive) i pesi del modello di biobert REL
