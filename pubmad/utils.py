@@ -329,6 +329,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                 class_idx, class_prob = max(
                     enumerate(class_probs), key=lambda x: x[1])
                 if class_prob > 0.5:
+                    class_prob = float(class_prob)
                     relations.append((gene_entity, drug_entity, class_prob))
             except Exception as e:
                 print(e)
