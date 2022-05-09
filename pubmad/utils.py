@@ -26,6 +26,11 @@ nltk.download('punkt')
 from transformers import AutoTokenizer, AutoModel, AutoModelForSequenceClassification
 from transformers import pipeline
 
+chemprot_model = AutoModelForSequenceClassification.from_pretrained(
+    "pier297/autotrain-chemprot-re-838426740")
+chemprot_tokenizer = AutoTokenizer.from_pretrained(
+    "pier297/autotrain-chemprot-re-838426740")
+
 rel_tokenizer = AutoTokenizer.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
 rel_model = AutoModelForSequenceClassification.from_pretrained("JacopoBandoni/BioBertRelationGenesDiseases")
 
@@ -285,14 +290,37 @@ def extract_biobert_relations(article : Article, source: str = 'abstract', clear
     # divide entities in gene and disease entities
     gene_entities = []
     disease_entities = []
+    drug_entities = []
     for entity in entities:
         if entity.type == "disease":
             disease_entities.append(entity)
         elif entity.type == "gene":
             gene_entities.append(entity)
+        elif entity.type == "drug":
+            drug_entities.append(entity)
     
     relations = []
     for gene_entity in gene_entities:
+        # extract gene-drug relations using fine-tuned bert on chemprot
+        for drug_entity in drug_entities:
+            # find the sentence that contains the gene and disease
+            sentence_index_gene = find_entity(gene_entity, span_sentences)
+            sentence_index_drug = find_entity(drug_entity, span_sentences)
+
+            masked_text = ''
+            if gene_entity.span_begin < disease_entity.span_begin:
+                # wrap the gene_entity in << >>
+                # and the disease with [[ ]]
+                masked_text = text[:gene_entity.span_begin] + "<<" + text[gene_entity.span_begin:gene_entity.span_end] + ">>" + text[gene_entity.span_end:disease_entity.span_begin] + "[[" + text[disease_entity.span_begin:disease_entity.span_end] + "]]" + text[disease_entity.span_end:]
+            else:
+                # wrap the gene with [[ ]]
+                # and the disease with << >>
+                masked_text = text[:disease_entity.span_begin] + "[[" + text[disease_entity.span_begin:disease_entity.span_end] + "]]" + text[disease_entity.span_end:gene_entity.span_begin] + "<<" + text[gene_entity.span_begin:gene_entity.span_end] + ">>" + text[gene_entity.span_end:]
+
+            print(masked_text)
+            break
+
+        # extract gene-disease relations using biobert
         for disease_entity in disease_entities:
 
             #find the sentence that contains the gene and disease
