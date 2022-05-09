@@ -1,5 +1,8 @@
-from pubmad import get_graph, display_graph
+from pubmad import get_graph, get_communities, html_graph
 
-G = get_graph('diabetes', max_publications=10, use_biobert=True, clear_cache=True)
+G = get_graph('diabetes', max_publications=1, use_biobert=True, clear_cache=False)
 
-display_graph(G, hide_isolated_nodes=True)
+communities = get_communities(G, "weight")
+
+html_graph(G, "diabetes", communities)
+#display_graph(G, hide_isolated_nodes=True)

@@ -6,6 +6,7 @@ from pubmad.types import Article, Entity
 from typing import List, Tuple
 from datetime import datetime
 import time
+from tqdm import tqdm
 
 def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -> List[List[str]]:
     comm = nx_comm.louvain_communities(G, weight_label, seed=seed)
@@ -42,7 +43,8 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
     N = len(articles)
     start = time.time()
 
-    for article in articles:
+    for i in tqdm(range(0,len(articles))):
+        article = articles[i]
         if use_biobert == False:
             entities: List[Entity] = extract_entities(article, source)
 
@@ -75,7 +77,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         for src, dst, weight in relations:
             G.add_edge(src.mesh_id[0], dst.mesh_id[0], weight=weight)
         i += 1
-        print(f'Processing article {i}/{N}')
+        #print(f'Processing article {i}/{N}')
 
     # Save the graph in cytoscape format
     if save_graph == True:
