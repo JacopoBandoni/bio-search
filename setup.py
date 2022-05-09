@@ -1,4 +1,6 @@
 from setuptools import setup, find_packages
+import subprocess
+import os
 
 with open('README.md') as readme_file:
     README = readme_file.read()
