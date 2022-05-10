@@ -5,6 +5,8 @@ import json
 from pubmad import get_graph, get_communities
 import networkx as nx
 
+from pubmad.utils import display_graph
+
 app = Flask(__name__)
 CORS(app)
 
@@ -17,8 +19,23 @@ def API_get_graph():
     end_year = data['end_year']
     use_biobert = data['use_biobert']
     use_biobert = bool(int(use_biobert))
-    G = get_graph(query, max_publications=max_publications, start_year=start_year, end_year=end_year, use_biobert=use_biobert,
-        clear_cache=False)#, callback_fn=lambda partial_G: emit('update', {'cy_data': json.dumps(nx.readwrite.json_graph.cytoscape_data(partial_G))}))
+    # convert json to dict
+    nodes = data['data']['elements']['nodes']
+    edges = data['data']['elements']['edges']
+
+    if len(nodes) > 0:
+        # create graph from nodes and edges from cytoscape
+        elements = {'nodes': nodes, 'edges': edges}
+        cy_data = {
+            'elements': elements,
+            'data': [],
+        }
+        G = nx.cytoscape_graph(cy_data)
+        G = get_graph(query, max_publications, start_year, end_year, use_biobert, clear_cache=False, G=G)
+    else:
+        G = get_graph(query, max_publications=max_publications, start_year=start_year, end_year=end_year, use_biobert=use_biobert,
+            clear_cache=False)#, callback_fn=lambda partial_G: emit('update', {'cy_data': json.dumps(nx.readwrite.json_graph.cytoscape_data(partial_G))}))
+    
     communities = get_communities(G, 'weight', seed=42)
     cy_data = json.dumps(nx.readwrite.json_graph.cytoscape_data(G))
     response = {
