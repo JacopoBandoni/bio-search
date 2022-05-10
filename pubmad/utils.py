@@ -370,23 +370,28 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                 inputs = chemprot_tokenizer(
                     masked_text, return_tensors="pt").to(device)
 
+                # print(inputs['input_ids'].shape)
+                # print(inputs['input_ids'].shape[1])
+
                 # if inputs tokens > 512 discard the input
                 if inputs['input_ids'].shape[1] > 512:
                     continue
-                
-                # compute the relation
-                outputs = chemprot_model(**inputs)
-                class_logits = outputs["logits"].detach().cpu().numpy()
-                class_logits = class_logits[0]
-                class_probs = np.exp(class_logits) / \
-                    np.sum(np.exp(class_logits))
-                class_idx, class_prob = max(
-                    enumerate(class_probs), key=lambda x: x[1])
+                else:
+                    # compute the relation
+                    outputs = chemprot_model(**inputs)
+                    class_logits = outputs["logits"].detach().cpu().numpy()
+                    class_logits = class_logits[0]
+                    class_probs = np.exp(class_logits) / \
+                        np.sum(np.exp(class_logits))
+                    class_idx, class_prob = max(
+                        enumerate(class_probs), key=lambda x: x[1])
 
-                # if the relation is confident add the relation
-                if class_prob > 0.5:
-                    class_prob = float(class_prob)
-                    relations.append((gene_entity, drug_entity, class_prob))
+                    # if the relation is confident add the relation
+                    if class_prob > 0.5:
+                        class_prob = float(class_prob)
+                        relations.append((gene_entity, drug_entity, class_prob))
+                
+
             except Exception as e:
                 print(e)
                 continue
@@ -411,22 +416,25 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
 
                 inputs = rel_tokenizer(
                     masked_text, return_tensors="pt").to(device)
-                
+
+                # print(inputs['input_ids'].shape)
+                # print(inputs['input_ids'].shape[1])
+
                 # if inputs tokens > 512 discard the input
                 if inputs['input_ids'].shape[1] > 512:
                     continue
+                else:
+                    # compute the relations
+                    outputs = rel_model(**inputs)
+                    class_logits = outputs["logits"].detach().cpu().numpy()
+                    class_logits = class_logits[0]
+                    class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits))
 
-                # compute the relations
-                outputs = rel_model(**inputs)
-                class_logits = outputs["logits"].detach().cpu().numpy()
-                class_logits = class_logits[0]
-                class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits))
-
-                # if the relation is confident add the relation (= prob of no relation < 0.5)
-                if class_probs[0] < 0.5:
-                    # create new relations with edge corresponding to biosearch confidence
-                    relations.append(
-                        (gene_entity, disease_entity, class_probs[0]))
+                    # if the relation is confident add the relation (= prob of no relation < 0.5)
+                    if class_probs[0] < 0.5:
+                        # create new relations with edge corresponding to biosearch confidence
+                        relations.append(
+                            (gene_entity, disease_entity, class_probs[0]))
             except Exception as e:
                 print(e)
                 continue
