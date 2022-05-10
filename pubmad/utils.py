@@ -114,7 +114,51 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
         pickle.dump(articles, f)
     return articles
 
+def extract_entities_pmids(pmids: List[str]) -> List[List[Entity]]:
+    """Extract entities from one or more articles identified by the pmids provided
 
+    Args:
+        pmids (List[str]): list of pmids to extract entities from
+
+    Returns:
+        List[List[Entity]]: list of entities for each article
+    """
+    
+    if len(pmids) == 0:
+        return []
+    
+    # Query BERN2 server for entities.
+    extracted = False
+    bern_result = None
+    
+    i = 0
+    
+    while not extracted and i < 3:
+        try:
+            bern_result = query_pmid(pmids)
+            extracted = True
+        except Exception as e:
+            print("Error querying BERN2 server")
+            print("Sleep for 3 seconds and try again to not get banned by BERN2")
+            time.sleep(3)
+            i += 1
+            continue
+    
+    entities = []
+    
+    #Parse the result
+    for i, article in enumerate(bern_result):
+        entities_per_article = []
+        for entity in article["annotations"]:
+            if (entity['obj'] == 'disease' or entity['obj'] == 'gene' or entity['obj'] == 'drug'):
+                new_entity = Entity(mesh_id=entity['id'], mention=entity['mention'], type=entity['obj'],
+                                    prob=entity['prob'], span_begin=entity['span']['begin'], span_end=entity['span']['end'], pmid=pmids[i])
+                entities_per_article.append(new_entity)
+        entities.append(entities_per_article)
+    
+    return entities
+    
+    
 def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]:
     """
     Extract entities from an article using BERN2 (online).
@@ -280,7 +324,10 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
     # if len(text) > 512:
     #    text = text[:512]
 
-    entities = extract_entities(article, source)
+    entities = extract_entities_pmids([article.pmid])
+    if len(entities) > 0:
+        entities = entities[0]
+    
     span_sentences = tokenize_into_sentences(article, source)
 
     # divide entities in gene and disease entities
@@ -382,11 +429,14 @@ def query_plain(text, url="http://bern2.korea.ac.kr/plain"):
     result = requests.post(url, json={'text': text})
 
     if result.status_code != 200:
-        # Sleep for 10 seconds and try again
         print("Error: {}".format(result.status_code))
         raise Exception("Error: {}".format(result.status_code))
 
     return result.json()
+
+def query_pmid(pmids, url="http://bern2.korea.ac.kr/pubmed"):
+    """query the BERN2 server for pmids"""
+    return requests.get(url + "/" + ",".join(pmids)).json()
 
 
 def tokenize_into_sentences(article: Article, source: str = 'abstract') -> List[List[int]]:
