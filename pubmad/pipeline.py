@@ -1,9 +1,10 @@
+from ast import Call
 import os
 import networkx as nx
 import networkx.algorithms.community as nx_comm
 from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations
 from pubmad.types import Article, Entity
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 from datetime import datetime
 import time
 from tqdm import tqdm
@@ -13,7 +14,7 @@ def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -
     comm = [list(c) for c in comm if len(list(c)) > 1]
     return comm
 
-def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False) -> nx.Graph:
+def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, callback_fn: Callable[nx.Graph, None] = lambda x: None) -> nx.Graph:
     '''
     Returns a networkx graph containing relationships between genes and diseases.
     
@@ -27,6 +28,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
             save_graph (bool): Whether to save the graph or not. Defaults to True.
             G (nx.Graph): The graph to be used. Defaults to an empty graph.
             clear_cache (bool): Whether to clear the cache or not. Defaults to False.
+            callback_fn (Callable[nx.Graph, None]): The callback function to be used. Defaults to None. It receives the graph as an argument built up to the current processed article.
             
         Returns
             nx.Graph (networkx.Graph): A networkx graph containing relationships between genes and diseases.
@@ -72,6 +74,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
         for src, dst, weight in relations:
             G.add_edge(src.mesh_id[0], dst.mesh_id[0], weight=weight)
         i += 1
+        callback_fn(G)
         #print(f'Processing article {i}/{N}')
 
     # Save the graph in cytoscape format

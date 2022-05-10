@@ -4,7 +4,7 @@
 
 > export FLASK_APP=server
 
-> flask run
+> python server.py
 
 Then head over to the react client (https://github.com/Pier297/BioSearch)
 and execute:
