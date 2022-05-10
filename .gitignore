@@ -1,7 +1,7 @@
-biobert/
 __pycache__
 output/
 cache/
 .DS_Store
 pubmad.egg-info/
 dist/
+*.html
