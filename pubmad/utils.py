@@ -47,6 +47,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 rel_model = rel_model.to(device)
 chemprot_model = chemprot_model.to(device)
 
+import logging
+#logging.disable(logging.INFO) # disable INFO and DEBUG logging everywhere
+# or 
+logging.disable(logging.WARNING) # disable WARNING, INFO and DEBUG logging everywhere
+
 def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research: str = 'relevance') -> List[Article]:
     """
     Download articles from PubMed using BioPython library.
