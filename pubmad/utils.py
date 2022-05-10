@@ -390,7 +390,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
     # Predict the relations using biobert
     if len(biobert_batch) > 0:
         masked_texts = [x['masked_text'] for x in biobert_batch]
-        tok_texts = rel_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        tok_texts = rel_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
         outputs = rel_model(**tok_texts)
         class_logits = outputs["logits"].detach().cpu().numpy()
         # len x 2
@@ -405,7 +405,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
     # Predict the relations using chemprot
     if len(chemprot_batch) > 0:
         masked_texts = [x['masked_text'] for x in chemprot_batch]
-        tok_texts = chemprot_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        tok_texts = chemprot_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
         outputs = chemprot_model(**tok_texts)
         class_logits = outputs["logits"].detach().cpu().numpy()
         # len x 13
