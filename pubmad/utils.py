@@ -23,6 +23,7 @@ from pyvis.network import Network
 import re
 import random
 import numpy as np
+import IPython
 
 import nltk
 nltk.download('punkt')
@@ -565,5 +566,6 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
 
     net.show_buttons(filter_=['physics'])
     net.show(name + ".html")
+    IPython.display.HTML(filename=Path(os.getcwd())/(name + ".html"))
 
     return net
