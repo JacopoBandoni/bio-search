@@ -371,7 +371,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     masked_text, return_tensors="pt").to(device)
 
                 # if inputs tokens > 512 discard the input
-                if len(inputs['input_ids']) > 512:
+                if inputs['input_ids'].shape[1] > 512:
                     continue
                 
                 # compute the relation
@@ -413,9 +413,9 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     masked_text, return_tensors="pt").to(device)
                 
                 # if inputs tokens > 512 discard the input
-                if len(inputs['input_ids']) > 512:
+                if inputs['input_ids'].shape[1] > 512:
                     continue
-                
+
                 # compute the relations
                 outputs = rel_model(**inputs)
                 class_logits = outputs["logits"].detach().cpu().numpy()
@@ -424,13 +424,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
 
                 # if the relation is confident add the relation (= prob of no relation < 0.5)
                 if class_probs[0] < 0.5:
-                    
-                    # print labels
-                    print('class_probs: ' + str(class_probs[0]))
-                    print('out: ' + str(out))
-
                     # create new relations with edge corresponding to biosearch confidence
-                    print
                     relations.append(
                         (gene_entity, disease_entity, class_probs[0]))
             except Exception as e:
