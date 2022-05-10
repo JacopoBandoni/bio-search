@@ -26,7 +26,7 @@ import numpy as np
 import IPython
 
 import nltk
-nltk.download('punkt')
+nltk.download('punkt', quiet=True)
 
 
 chemprot_model = AutoModelForSequenceClassification.from_pretrained(
