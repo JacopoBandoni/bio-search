@@ -36,6 +36,7 @@ chemprot_tokenizer = AutoTokenizer.from_pretrained(
 
 rel_tokenizer = AutoTokenizer.from_pretrained(
     "JacopoBandoni/BioBertRelationGenesDiseases")
+
 rel_model = AutoModelForSequenceClassification.from_pretrained(
     "JacopoBandoni/BioBertRelationGenesDiseases")
 
@@ -45,10 +46,6 @@ rel_model.eval()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 rel_model = rel_model.to(device)
 chemprot_model = chemprot_model.to(device)
-
-rel_pipe = pipeline(task='text-classification', model=rel_model,
-                    tokenizer=rel_tokenizer, device=0 if device == 'cuda' else -1)
-
 
 def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research: str = 'relevance') -> List[Article]:
     """
