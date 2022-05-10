@@ -28,6 +28,8 @@ import IPython
 import nltk
 nltk.download('punkt', quiet=True)
 
+# Number of sequences per batch
+MAX_SEQ_PER_BATCH = 2
 
 chemprot_model = AutoModelForSequenceClassification.from_pretrained(
     "pier297/autotrain-chemprot-re-838426740")
@@ -386,38 +388,50 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]  
 
             biobert_batch.append({'gene_idx': gene_idx, 'disease_idx': disease_idx, 'masked_text': masked_text})
-    
+
     # Predict the relations using biobert
     if len(biobert_batch) > 0:
-        masked_texts = [x['masked_text'] for x in biobert_batch]
-        tok_texts = rel_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
-        outputs = rel_model(**tok_texts)
-        class_logits = outputs["logits"].detach().cpu().numpy()
-        # len x 2
-        # apply softmax to get the probabilities
-        class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
-        for i in range(len(class_logits)):
-            if class_probs[i][0] > 0.5:
-                gene = gene_entities[biobert_batch[i]['gene_idx']]
-                disease = disease_entities[biobert_batch[i]['disease_idx']]
-                relations.append((gene, disease, float(class_probs[i][0])))
+        for batch_idx in range(0, len(biobert_batch), MAX_SEQ_PER_BATCH):
+            batch = biobert_batch[batch_idx:batch_idx + MAX_SEQ_PER_BATCH]
+            masked_texts = [x['masked_text'] for x in batch]
+            tok_texts = rel_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
+            outputs = rel_model(**tok_texts)
+            class_logits = outputs["logits"].detach().cpu().numpy()
+            # len x 2
+            # apply softmax to get the probabilities
+            class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
+            for i in range(len(class_logits)):
+                if class_probs[i][0] > 0.5:
+                    j = i + batch_idx
+                    gene = gene_entities[biobert_batch[j]['gene_idx']]
+                    disease = disease_entities[biobert_batch[j]['disease_idx']]
+                    relations.append((gene, disease, float(class_probs[i][0])))
+
+            # free gpu memory
+            del tok_texts
     
-    # Predict the relations using chemprot
+    # # Predict the relations using chemprot
     if len(chemprot_batch) > 0:
-        masked_texts = [x['masked_text'] for x in chemprot_batch]
-        tok_texts = chemprot_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
-        outputs = chemprot_model(**tok_texts)
-        class_logits = outputs["logits"].detach().cpu().numpy()
-        # len x 13
-        # apply softmax to get the probabilities
-        class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
-        for i in range(len(class_logits)):
-            # if 1 class is above 0.5, then we consider it as a relation
-            max_p = np.max(class_probs[i])
-            if max_p > 0.5:
-                gene = gene_entities[chemprot_batch[i]['gene_idx']]
-                drug = drug_entities[chemprot_batch[i]['drug_idx']]
-                relations.append((gene, drug, float(max_p)))
+        for batch_idx in range(0, len(chemprot_batch), MAX_SEQ_PER_BATCH):
+            batch = chemprot_batch[batch_idx:batch_idx + MAX_SEQ_PER_BATCH]
+            masked_texts = [x['masked_text'] for x in batch]
+            tok_texts = chemprot_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
+            outputs = chemprot_model(**tok_texts)
+            class_logits = outputs["logits"].detach().cpu().numpy()
+            # len x 13
+            # apply softmax to get the probabilities
+            class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
+            for i in range(len(class_logits)):
+                # if 1 class is above 0.5, then we consider it as a relation
+                max_p = np.max(class_probs[i])
+                if max_p > 0.5:
+                    j = i + batch_idx
+                    gene = gene_entities[chemprot_batch[j]['gene_idx']]
+                    drug = drug_entities[chemprot_batch[j]['drug_idx']]
+                    relations.append((gene, drug, float(max_p)))
+
+            # free gpu memory
+            del tok_texts
 
         
     # save entities and relations to file with pickle
