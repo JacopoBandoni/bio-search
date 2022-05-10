@@ -14,7 +14,7 @@ def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -
     comm = [list(c) for c in comm if len(list(c)) > 1]
     return comm
 
-def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, callback_fn: Callable[nx.Graph, None] = lambda x: None) -> nx.Graph:
+def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, callback_fn = lambda x: None) -> nx.Graph:
     '''
     Returns a networkx graph containing relationships between genes and diseases.
     
