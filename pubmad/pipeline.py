@@ -46,36 +46,40 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
     start = time.time()
 
     for i in tqdm(range(0,len(articles))):
-        article = articles[i]
-        if use_biobert == False:
-            entities: List[Entity] = extract_entities(article, source)
+        try:
+            article = articles[i]
+            if use_biobert == False:
+                entities: List[Entity] = extract_entities(article, source)
 
-            relations: List[Tuple[Entity, Entity, float]] = extract_naive_relations(entities)
-        else:
-            entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
-            if not used_cache:
-                bern_calls_counter += 1
-                elapsed = time.time() - start
-                if elapsed < 0.34:
-                    time.sleep(0.35 - elapsed)
-                start = time.time()
-        
-        # Add the entities to the graph as nodes
-        for entity in entities:
-            # Search if there is already a node with the same mesh_id
-            if entity.mesh_id[0] not in G.nodes:
-                G.add_node(entity.mesh_id[0], mention=entity.mention, type=entity.type, pmid=entity.pmid)
+                relations: List[Tuple[Entity, Entity, float]] = extract_naive_relations(entities)
             else:
-                # If there is already a node with the same mesh_id, add the mention to the node
-                #G.nodes[entity.mesh_id[0]]['mention'] += ' ' + entity.mention
-                G.nodes[entity.mesh_id[0]]['pmid'] += ',' + entity.pmid
+                entities, relations, used_cache = extract_biobert_relations(article, source, clear_cache)
+                if not used_cache:
+                    bern_calls_counter += 1
+                    elapsed = time.time() - start
+                    if elapsed < 0.34:
+                        time.sleep(0.35 - elapsed)
+                    start = time.time()
+            
+            # Add the entities to the graph as nodes
+            for entity in entities:
+                # Search if there is already a node with the same mesh_id
+                if entity.mesh_id[0] not in G.nodes:
+                    G.add_node(entity.mesh_id[0], mention=entity.mention, type=entity.type, pmid=entity.pmid)
+                else:
+                    # If there is already a node with the same mesh_id, add the mention to the node
+                    #G.nodes[entity.mesh_id[0]]['mention'] += ' ' + entity.mention
+                    G.nodes[entity.mesh_id[0]]['pmid'] += ',' + entity.pmid
 
-        # Add the relations to the graph as edges
-        for src, dst, weight in relations:
-            G.add_edge(src.mesh_id[0], dst.mesh_id[0], weight=weight)
-        i += 1
-        callback_fn(G)
-        #print(f'Processing article {i}/{N}')
+            # Add the relations to the graph as edges
+            for src, dst, weight in relations:
+                G.add_edge(src.mesh_id[0], dst.mesh_id[0], weight=weight)
+            callback_fn(G)
+            i += 1
+        except Exception as e:
+            print(f'Error: {e}')
+            print('Skipping article')
+            i += 1
 
     # Save the graph in cytoscape format
     if save_graph == True:

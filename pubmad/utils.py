@@ -26,8 +26,10 @@ import numpy as np
 import IPython
 
 import nltk
-nltk.download('punkt')
+nltk.download('punkt', quiet=True)
 
+# Number of sequences per batch
+MAX_SEQ_PER_BATCH = 2
 
 chemprot_model = AutoModelForSequenceClassification.from_pretrained(
     "pier297/autotrain-chemprot-re-838426740")
@@ -36,6 +38,7 @@ chemprot_tokenizer = AutoTokenizer.from_pretrained(
 
 rel_tokenizer = AutoTokenizer.from_pretrained(
     "JacopoBandoni/BioBertRelationGenesDiseases")
+
 rel_model = AutoModelForSequenceClassification.from_pretrained(
     "JacopoBandoni/BioBertRelationGenesDiseases")
 
@@ -46,9 +49,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 rel_model = rel_model.to(device)
 chemprot_model = chemprot_model.to(device)
 
-rel_pipe = pipeline(task='text-classification', model=rel_model,
-                    tokenizer=rel_tokenizer, device=0 if device == 'cuda' else -1)
-
+import logging
+#logging.disable(logging.INFO) # disable INFO and DEBUG logging everywhere
+# or 
+logging.disable(logging.WARNING) # disable WARNING, INFO and DEBUG logging everywhere
 
 def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research: str = 'relevance') -> List[Article]:
     """
@@ -320,11 +324,6 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
     else:
         raise ValueError("Invalid source: {}".format(source))
 
-    # TODO: Delete this pls
-    # truncate the text if it is too long
-    # if len(text) > 512:
-    #    text = text[:512]
-
     entities = extract_entities_pmids([article.pmid])
     if len(entities) > 0:
         entities = entities[0]
@@ -344,9 +343,11 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
             drug_entities.append(entity)
 
     relations = []
-    for gene_entity in gene_entities:
+    chemprot_batch = []
+    biobert_batch = []
+    for gene_idx, gene_entity in enumerate(gene_entities):
         # extract gene-drug relations using fine-tuned bert on chemprot
-        for drug_entity in drug_entities:
+        for drug_idx, drug_entity in enumerate(drug_entities):
             # find the sentence that contains the gene and disease
             sentence_index_gene = find_entity(gene_entity, span_sentences)
             sentence_index_drug = find_entity(drug_entity, span_sentences)
@@ -366,38 +367,12 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     text[drug_entity.span_end:gene_entity.span_begin] + "[[ " + text[gene_entity.span_begin:gene_entity.span_end] + \
                     " ]]" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
-            try:
-                inputs = chemprot_tokenizer(
-                    masked_text, padding=True, truncation=True, return_tensors="pt").to(device)
 
-                # print(inputs['input_ids'].shape)
-                # print(inputs['input_ids'].shape[1])
+            chemprot_batch.append({'gene_idx': gene_idx, 'drug_idx': drug_idx, 'masked_text': masked_text})
 
-                # if inputs tokens > 512 discard the input
-                if inputs['input_ids'].shape[1] > 512:
-                    continue
-                else:
-                    # compute the relation
-                    outputs = chemprot_model(**inputs)
-                    class_logits = outputs["logits"].detach().cpu().numpy()
-                    class_logits = class_logits[0]
-                    class_probs = np.exp(class_logits) / \
-                        np.sum(np.exp(class_logits))
-                    class_idx, class_prob = max(
-                        enumerate(class_probs), key=lambda x: x[1])
-
-                    # if the relation is confident add the relation
-                    if class_prob > 0.5:
-                        class_prob = float(class_prob)
-                        relations.append((gene_entity, drug_entity, class_prob))
-                
-
-            except Exception as e:
-                print(e)
-                continue
 
         # extract gene-disease relations using biobert
-        for disease_entity in disease_entities:
+        for disease_idx, disease_entity in enumerate(disease_entities):
             # find the sentence that contains the gene and disease
             sentence_index_gene = find_entity(gene_entity, span_sentences)
             sentence_index_disease = find_entity(
@@ -411,34 +386,54 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                 masked_text = text[span_sentences[sentence_index_disease][0]:disease_entity.span_begin] + "@DISEASE$" + \
                     text[disease_entity.span_end:gene_entity.span_begin] + "@GENE$" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]  
-            try:
-                out = rel_pipe(masked_text)[0]
 
-                inputs = rel_tokenizer(
-                    masked_text, padding=True, truncation=True, return_tensors="pt").to(device)
+            biobert_batch.append({'gene_idx': gene_idx, 'disease_idx': disease_idx, 'masked_text': masked_text})
 
-                # print(inputs['input_ids'].shape)
-                # print(inputs['input_ids'].shape[1])
+    # Predict the relations using biobert
+    if len(biobert_batch) > 0:
+        for batch_idx in range(0, len(biobert_batch), MAX_SEQ_PER_BATCH):
+            batch = biobert_batch[batch_idx:batch_idx + MAX_SEQ_PER_BATCH]
+            masked_texts = [x['masked_text'] for x in batch]
+            tok_texts = rel_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
+            outputs = rel_model(**tok_texts)
+            class_logits = outputs["logits"].detach().cpu().numpy()
+            # len x 2
+            # apply softmax to get the probabilities
+            class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
+            for i in range(len(class_logits)):
+                if class_probs[i][0] > 0.5:
+                    j = i + batch_idx
+                    gene = gene_entities[biobert_batch[j]['gene_idx']]
+                    disease = disease_entities[biobert_batch[j]['disease_idx']]
+                    relations.append((gene, disease, float(class_probs[i][0])))
 
-                # if inputs tokens > 512 discard the input
-                if inputs['input_ids'].shape[1] > 512:
-                    continue
-                else:
-                    # compute the relations
-                    outputs = rel_model(**inputs)
-                    class_logits = outputs["logits"].detach().cpu().numpy()
-                    class_logits = class_logits[0]
-                    class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits))
+            # free gpu memory
+            del tok_texts
+    
+    # # Predict the relations using chemprot
+    if len(chemprot_batch) > 0:
+        for batch_idx in range(0, len(chemprot_batch), MAX_SEQ_PER_BATCH):
+            batch = chemprot_batch[batch_idx:batch_idx + MAX_SEQ_PER_BATCH]
+            masked_texts = [x['masked_text'] for x in batch]
+            tok_texts = chemprot_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
+            outputs = chemprot_model(**tok_texts)
+            class_logits = outputs["logits"].detach().cpu().numpy()
+            # len x 13
+            # apply softmax to get the probabilities
+            class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
+            for i in range(len(class_logits)):
+                # if 1 class is above 0.5, then we consider it as a relation
+                max_p = np.max(class_probs[i])
+                if max_p > 0.5:
+                    j = i + batch_idx
+                    gene = gene_entities[chemprot_batch[j]['gene_idx']]
+                    drug = drug_entities[chemprot_batch[j]['drug_idx']]
+                    relations.append((gene, drug, float(max_p)))
 
-                    # if the relation is confident add the relation (= prob of no relation < 0.5)
-                    if class_probs[0] < 0.5:
-                        # create new relations with edge corresponding to biosearch confidence
-                        relations.append(
-                            (gene_entity, disease_entity, class_probs[0]))
-            except Exception as e:
-                print(e)
-                continue
+            # free gpu memory
+            del tok_texts
 
+        
     # save entities and relations to file with pickle
     with open(path / 'entities' / file_name, 'wb') as f:
         pickle.dump(entities, f)
