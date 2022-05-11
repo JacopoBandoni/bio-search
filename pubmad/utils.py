@@ -368,7 +368,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
             try:
                 inputs = chemprot_tokenizer(
-                    masked_text, return_tensors="pt").to(device)
+                    masked_text, padding=True, truncation=True, return_tensors="pt").to(device)
 
                 # print(inputs['input_ids'].shape)
                 # print(inputs['input_ids'].shape[1])
@@ -415,7 +415,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                 out = rel_pipe(masked_text)[0]
 
                 inputs = rel_tokenizer(
-                    masked_text, return_tensors="pt").to(device)
+                    masked_text, padding=True, truncation=True, return_tensors="pt").to(device)
 
                 # print(inputs['input_ids'].shape)
                 # print(inputs['input_ids'].shape[1])
@@ -598,3 +598,15 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
     IPython.display.HTML(filename=Path(os.getcwd())/(name + ".html"))
 
     return net
+
+def node_filtering(G, degree):
+    # remove nodes with degree less than the degree threshold
+
+    graph_copy = G.copy()
+
+    to_be_removed = [x for  x in graph_copy.nodes() if graph_copy.degree(x) <= 15]
+
+    for x in to_be_removed:
+        graph_copy.remove_node(x)
+    
+    return graph_copy
