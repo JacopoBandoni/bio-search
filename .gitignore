@@ -4,4 +4,3 @@ cache/
 .DS_Store
 pubmad.egg-info/
 dist/
-*.html
