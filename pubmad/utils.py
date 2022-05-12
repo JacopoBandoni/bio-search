@@ -540,11 +540,7 @@ def add_title_edge(G, edge):
     return result_html
 
 
-def _html_graph_communities(G, communities, net):
-    # generate random color for each community
-    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-              for i in range(len(communities))]
-
+def _html_graph_communities(G, communities, net, colors):
     for i, community in enumerate(communities):
         for node_id in community:
             node = net.get_node(node_id)
@@ -558,6 +554,11 @@ def _html_graph_communities(G, communities, net):
             elif (node_type == 'drug'):
                 node['shape'] = 'star'
 
+
+def _find_community(node_id, communities):
+    for i, community in enumerate(communities):
+        if node_id in community:
+            return i
 
 def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
 
@@ -578,15 +579,30 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
                      title=add_title_node(G, n, d))
 
     # if communities is not None and len(communities) > 0
+    # if communities is not None and len(communities) > 0
+    colors = []
     if communities is not None and len(communities) > 0:
-        _html_graph_communities(G, communities, net)
+            # generate random color for each community
+        colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+                for i in range(len(communities))]
+        _html_graph_communities(G, communities, net, colors)
 
     # add edges
     for edge in G.edges(data='True'):
         add_title_edge(G, edge)
         weight = G.get_edge_data(edge[0], edge[1])['weight']
-        net.add_edge(edge[0], edge[1], value=weight,
-                     color='#F0EB5A', title=add_title_edge(G, edge))
+        if communities is not None and len(communities) > 0:
+            # find the community of the two nodes
+            community_node1_index = _find_community(edge[0], communities)
+            if edge[1] in communities[community_node1_index]:
+                net.add_edge(edge[0], edge[1], value=weight,
+                    color=colors[community_node1_index], title=add_title_edge(G, edge))
+            else:
+                net.add_edge(edge[0], edge[1], value=weight,
+                            color='#F0EB5A', title=add_title_edge(G, edge))            
+        else:
+            net.add_edge(edge[0], edge[1], value=weight,
+                        color='#F0EB5A', title=add_title_edge(G, edge))
 
     net.show_buttons(filter_=['physics'])
     net.show(name + ".html")
