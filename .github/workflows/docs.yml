@@ -23,8 +23,7 @@ jobs:
 
       - run: pip install pdoc
       # ADJUST THIS: build your documentation into docs/.
-      - run: docs/make.py  
-      # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
+      - run: pdoc -o docs/ pubmad/pipeline.py pubmad/utils.py pubmad/types.py
 
       - run: tar --directory docs/ -hcf artifact.tar .
       - uses: actions/upload-artifact@v3
