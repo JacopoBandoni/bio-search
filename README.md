@@ -13,4 +13,4 @@ and execute:
 
 To generate the doc run:
 
-> pdoc -o . pubmad/pipeline.py pubmad/utils.py pubmad/types.py
+> pdoc -o docs/ pubmad/pipeline.py pubmad/utils.py pubmad/types.py --logo "https://imgur.com/rTCNFNS"
