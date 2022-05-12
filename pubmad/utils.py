@@ -24,6 +24,7 @@ import re
 import random
 import numpy as np
 import IPython
+from math import ceil
 
 import nltk
 nltk.download('punkt', quiet=True)
@@ -219,7 +220,7 @@ def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]
     return entities
 
 
-def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
+def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True, show: bool = True):
     """
     Display a graph.
 
@@ -227,6 +228,7 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
         graph (nx.Graph): The graph to display.
         hide_isolated_nodes (bool): Whether to hide isolated nodes. Defaults to True.
     """
+    plt.figure()
     if hide_isolated_nodes:
         graph.remove_nodes_from(list(nx.isolates(graph)))
 
@@ -245,7 +247,7 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
     nx.draw_networkx_nodes(graph, pos, nodelist=disease_nodes,
                            node_color='b', node_size=100, alpha=0.8, label='disease')
     nx.draw_networkx_nodes(graph, pos, nodelist=other_nodes,
-                           node_color='g', node_size=100, alpha=0.8, label='other')
+                           node_color='g', node_size=100, alpha=0.8, label='drug')
 
     nx.draw_networkx_labels(graph, pos, labels={
                             n: d['mention'] for n, d in graph.nodes(data=True)}, font_size=10)
@@ -253,7 +255,10 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True):
     nx.draw_networkx_edges(graph, pos, width=1.0, alpha=0.5)
     plt.axis('off')
     plt.legend()
-    plt.show()
+    if show:
+        plt.show()
+    else:
+        plt.draw()
 
 
 def extract_naive_relations(entities: List[Entity]) -> List[Tuple[Entity, Entity, float]]:
@@ -615,9 +620,134 @@ def node_filtering(G, degree):
     
     graph_copy = G.copy()
 
-    to_be_removed = [x for  x in graph_copy.nodes() if graph_copy.degree(x) <= degree]
+    to_be_removed = [node_id for node_id in graph_copy.nodes() if graph_copy.degree(node_id) <= degree]
 
     for x in to_be_removed:
         graph_copy.remove_node(x)
     
     return graph_copy
+
+
+def filter_by_centrality(G, percentage_threshold):
+    '''
+    Filter the graph by mantaining the 'percentage_threshold' of the nodes with the highest centrality.
+    '''
+    mesh_id_to_degree = dict()
+    for node_id in G.nodes():
+        mesh_id_to_degree[node_id] = G.degree(node_id)
+
+    sorted_mesh_ids = sorted(mesh_id_to_degree, key=mesh_id_to_degree.get, reverse=True)
+
+    # take only the nodes with the highest centrality
+    nodes_to_keep = sorted_mesh_ids[:ceil(len(sorted_mesh_ids)*percentage_threshold)]
+    
+    return G.subgraph(nodes_to_keep).copy()
+
+
+def filter_by_name(G, name: str):
+    """filter the graph by name
+    
+    Args: 
+        G (Networkx Graph): graph to filter
+        name (str): name to filter by
+    Returns:
+        List of nodes objects containing (mention, type, pmid, mesh_id)
+    """
+    nodes = []
+    for n, d in G.nodes(data=True):
+        if name in d['mention']:
+            d['mesh_id'] = n
+            nodes.append(d)
+    
+    return nodes
+
+
+def filter_by_category(G, category: str, max_number_of_nodes: int = None, sort_by: str = 'degree'):
+    '''
+    Returns the nodes with the type category
+    Args:
+        G (Networkx Graph): graph to filter
+        category (str): category to filter by: 'gene', 'disease', 'drug'
+        max_number_of_nodes (int): maximum number of nodes to return. If None, all nodes are returned
+        sort_by (str): sort by 'degree' or 'name'
+    '''
+    if category not in ['gene', 'disease', 'drug']:
+        raise ValueError("category must be one of 'gene', 'disease', 'drug'")
+
+    nodes = []
+    for n, d in G.nodes(data=True):
+        if d['type'] == category:
+            d['mesh_id'] = n
+            nodes.append(d)
+
+    if sort_by == 'degree':
+        nodes = sorted(nodes, key=lambda node: G.degree(node['mesh_id']), reverse=True)
+    elif sort_by == 'name':
+        nodes = sorted(nodes, key=lambda node: node['mention'])
+
+    if max_number_of_nodes is not None:
+        nodes = nodes[:max_number_of_nodes]
+
+    return nodes
+
+def expand_from_node(G, node, max_distance):
+    ''' 
+    Returns the subgraph that starting from the node id link all the node with distance k from id
+    '''
+    if type(node) == List:
+        node = node[0]
+        print("node is a list, taking the first element")
+        print("Otherwise use 'expand_from_nodes'")
+    node_list = [node['mesh_id']]
+
+    for node, succ  in nx.bfs_successors(G, node['mesh_id'], depth_limit = max_distance):
+        node_list += list(succ)
+
+    return G.subgraph(node_list).copy()
+
+
+def expand_from_nodes(G, nodes, max_distance: int):
+    node_id_list = [node['mesh_id'] for node in nodes]
+
+    node_list = [node['mesh_id'] for node in nodes]
+    
+    for node_id in node_id_list:
+        for _, succ  in nx.bfs_successors(G, node_id, depth_limit = max_distance):
+            node_list += list(succ)
+
+    return G.subgraph(node_list).copy()
+
+
+def search_path(G, from_node, to_node):
+    '''
+    Returns the path between two nodes in the graph
+    '''
+    return nx.shortest_path(G, source=from_node['mesh_id'], target=to_node['mesh_id'])
+
+def search_paths_to_category(G, from_node, category: str):
+    '''
+    Returns the paths from 'from_node' to nodes with the type 'category'
+    '''
+    if category not in ['gene', 'disease', 'drug']:
+        raise ValueError("category must be one of 'gene', 'disease', 'drug'")
+    
+    targets_nodes = filter_by_category(G, category)
+    paths = []
+    for target_node in targets_nodes:
+        paths.append(search_path(G, from_node, target_node))
+
+    return paths
+
+
+def get_graph_from_path(G, path):
+    '''
+    Returns the subgraph that contains the nodes in the path
+    '''
+    return G.subgraph(path).copy()
+
+def get_graph_from_paths(G, paths):
+    '''
+    Returns the subgraph that contains the nodes in the paths
+    '''
+    nodes = [node for path in paths for node in path]
+    return G.subgraph(nodes).copy()

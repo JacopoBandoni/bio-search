@@ -1,7 +1,14 @@
-from pubmad import get_graph, get_communities, html_graph, display_graph
+from dis import dis
+from pubmad import *
 
-G = get_graph('diabetes', max_publications=2, use_biobert=True, clear_cache=True)
+G = get_graph('diabetes', 10)
 
-communities = get_communities(G, "weight")
+insulin = filter_by_name(G, 'insulin')[0]
 
-html_graph(G, "diabetes", communities)
+paths = search_paths_to_category(G, insulin, 'drug')
+
+new_G = get_graph_from_paths(G, paths)
+
+display_graph(G, show=False)
+
+display_graph(new_G)
