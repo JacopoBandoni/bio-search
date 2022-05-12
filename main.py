@@ -1,4 +1,3 @@
-from dis import dis
 from pubmad import *
 
 G = get_graph('diabetes', 10)

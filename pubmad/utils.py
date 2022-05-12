@@ -1,13 +1,8 @@
-from transformers import pipeline
-from transformers import AutoTokenizer, AutoModel, AutoModelForSequenceClassification
-from tkinter import N
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from typing import List, Tuple
-from pymed import PubMed
-import json
 import requests
 import networkx as nx
-from datetime import datetime
 from itertools import product
 from pubmad.types import Article, Entity
 import matplotlib.pyplot as plt
@@ -16,8 +11,6 @@ from nltk.tokenize import sent_tokenize
 import pickle
 from pathlib import Path
 import time
-from joblib import Parallel, delayed
-import copy
 from Bio import Entrez, Medline
 from pyvis.network import Network
 import re
