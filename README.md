@@ -10,3 +10,7 @@ Then head over to the react client (https://github.com/Pier297/BioSearch)
 and execute:
 
 > npm start
+
+To generate the doc run:
+
+> pdoc -o . pubmad/pipeline.py pubmad/utils.py pubmad/types.py
