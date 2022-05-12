@@ -612,10 +612,10 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
 
 def node_filtering(G, degree):
     # remove nodes with degree less than the degree threshold
-
+    
     graph_copy = G.copy()
 
-    to_be_removed = [x for  x in graph_copy.nodes() if graph_copy.degree(x) <= 15]
+    to_be_removed = [x for  x in graph_copy.nodes() if graph_copy.degree(x) <= degree]
 
     for x in to_be_removed:
         graph_copy.remove_node(x)
