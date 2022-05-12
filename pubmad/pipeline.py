@@ -1,10 +1,9 @@
-from ast import Call
 import os
 import networkx as nx
 import networkx.algorithms.community as nx_comm
 from pubmad.utils import download_articles, extract_entities, extract_naive_relations, extract_biobert_relations
 from pubmad.types import Article, Entity
-from typing import List, Tuple, Callable
+from typing import List, Tuple
 from datetime import datetime
 import time
 from tqdm import tqdm
