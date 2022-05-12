@@ -20,8 +20,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
+      # install conda
+      - name: install conda
+        uses: actions/setup-conda@v3
+        with:
+          conda-yml: |
+            channels:
+              - defaults
+            - conda-forge
 
-      - run: pip install pdoc
+      - run: conda create --name biosearch --file requirements.txt
+      - run: conda activate biosearch
       # ADJUST THIS: build your documentation into docs/.
       - run: pdoc -o docs/ pubmad/pipeline.py pubmad/utils.py pubmad/types.py
 
