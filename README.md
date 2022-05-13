@@ -1,5 +1,7 @@
 # ProgettoBIO
 
+The documentation can be seen at https://pier297.github.io/ProgettoBIO/
+
 ## To run the server
 
 > export FLASK_APP=server
