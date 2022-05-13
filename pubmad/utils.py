@@ -326,9 +326,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
     else:
         raise ValueError("Invalid source: {}".format(source))
 
-    entities = extract_entities_pmids([article.pmid])
-    if len(entities) > 0:
-        entities = entities[0]
+    entities = extract_entities(article)
 
     span_sentences = tokenize_into_sentences(article, source)
 
@@ -370,6 +368,8 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     " ]]" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
 
+            print(masked_text)
+
             chemprot_batch.append(
                 {'gene_idx': gene_idx, 'drug_idx': drug_idx, 'masked_text': masked_text})
 
@@ -388,6 +388,8 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                 masked_text = text[span_sentences[sentence_index_disease][0]:disease_entity.span_begin] + "@DISEASE$" + \
                     text[disease_entity.span_end:gene_entity.span_begin] + "@GENE$" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
+
+            #print(masked_text)
 
             biobert_batch.append(
                 {'gene_idx': gene_idx, 'disease_idx': disease_idx, 'masked_text': masked_text})
