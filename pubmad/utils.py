@@ -1,3 +1,4 @@
+import logging
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from typing import List, Tuple
@@ -43,10 +44,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 rel_model = rel_model.to(device)
 chemprot_model = chemprot_model.to(device)
 
-import logging
-#logging.disable(logging.INFO) # disable INFO and DEBUG logging everywhere
-# or 
-logging.disable(logging.WARNING) # disable WARNING, INFO and DEBUG logging everywhere
+# logging.disable(logging.INFO) # disable INFO and DEBUG logging everywhere
+# or
+# disable WARNING, INFO and DEBUG logging everywhere
+logging.disable(logging.WARNING)
+
 
 def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', sort_by: str = 'relevance') -> List[Article]:
     """
@@ -57,6 +59,7 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
         end_year (int): The end year to search for.
         max_results (int): The maximum number of results to return.
         author (str): The author to search for, leave empty to search for all authors.
+        sort_by (str): The sort order to use. Can be 'relevance' to retrieve the most relevant results, or 'date' to sort by publication date. Defaults to 'relevance'.
     Returns:
         List[Article] A list of articles.
     """
@@ -113,6 +116,7 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
         pickle.dump(articles, f)
     return articles
 
+
 def extract_entities_pmids(pmids: List[str]) -> List[List[Entity]]:
     """Extract entities from one or more articles identified by the pmids provided
 
@@ -122,16 +126,16 @@ def extract_entities_pmids(pmids: List[str]) -> List[List[Entity]]:
     Returns:
         List[List[Entity]]: list of entities for each article
     """
-    
+
     if len(pmids) == 0:
         return []
-    
+
     # Query BERN2 server for entities.
     extracted = False
     bern_result = None
-    
+
     i = 0
-    
+
     while not extracted and i < 3:
         try:
             bern_result = query_pmid(pmids)
@@ -142,10 +146,10 @@ def extract_entities_pmids(pmids: List[str]) -> List[List[Entity]]:
             time.sleep(3)
             i += 1
             continue
-    
+
     entities = []
-    
-    #Parse the result
+
+    # Parse the result
     for i, article in enumerate(bern_result):
         entities_per_article = []
         for entity in article["annotations"]:
@@ -154,10 +158,10 @@ def extract_entities_pmids(pmids: List[str]) -> List[List[Entity]]:
                                     prob=entity['prob'], span_begin=entity['span']['begin'], span_end=entity['span']['end'], pmid=pmids[i])
                 entities_per_article.append(new_entity)
         entities.append(entities_per_article)
-    
+
     return entities
-    
-    
+
+
 def extract_entities(article: Article, source: str = 'abstract') -> List[Entity]:
     """
     Extract entities from an article using BERN2 (online).
@@ -220,6 +224,7 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True, show: bool 
     Args:
         graph (nx.Graph): The graph to display.
         hide_isolated_nodes (bool): Whether to hide isolated nodes. Defaults to True.
+        show (bool): Whether to show the graph. Defaults to True. Otherwise it shows the window without stopping the program.
     """
     plt.figure()
     if hide_isolated_nodes:
@@ -287,7 +292,6 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
         Tuple[List[Entity], List[Tuple[Entity, Entity]], bool]: A tuple of entities, relations and whether the cache was used.
 
     """
-    # TODO: Find a better way to handle articles with multiple pmids
     file_name = str(article.pmid)[:128] + '.txt'
     file_name = file_name.replace('\n', '_')
     path = Path(os.getcwd()) / 'cache'
@@ -325,7 +329,7 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
     entities = extract_entities_pmids([article.pmid])
     if len(entities) > 0:
         entities = entities[0]
-    
+
     span_sentences = tokenize_into_sentences(article, source)
 
     # divide entities in gene and disease entities
@@ -366,8 +370,8 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     " ]]" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
 
-            chemprot_batch.append({'gene_idx': gene_idx, 'drug_idx': drug_idx, 'masked_text': masked_text})
-
+            chemprot_batch.append(
+                {'gene_idx': gene_idx, 'drug_idx': drug_idx, 'masked_text': masked_text})
 
         # extract gene-disease relations using biobert
         for disease_idx, disease_entity in enumerate(disease_entities):
@@ -383,21 +387,24 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
             else:
                 masked_text = text[span_sentences[sentence_index_disease][0]:disease_entity.span_begin] + "@DISEASE$" + \
                     text[disease_entity.span_end:gene_entity.span_begin] + "@GENE$" + \
-                    text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]  
+                    text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
 
-            biobert_batch.append({'gene_idx': gene_idx, 'disease_idx': disease_idx, 'masked_text': masked_text})
+            biobert_batch.append(
+                {'gene_idx': gene_idx, 'disease_idx': disease_idx, 'masked_text': masked_text})
 
     # Predict the relations using biobert
     if len(biobert_batch) > 0:
         for batch_idx in range(0, len(biobert_batch), MAX_SEQ_PER_BATCH):
             batch = biobert_batch[batch_idx:batch_idx + MAX_SEQ_PER_BATCH]
             masked_texts = [x['masked_text'] for x in batch]
-            tok_texts = rel_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
+            tok_texts = rel_tokenizer(
+                masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
             outputs = rel_model(**tok_texts)
             class_logits = outputs["logits"].detach().cpu().numpy()
             # len x 2
             # apply softmax to get the probabilities
-            class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
+            class_probs = np.exp(
+                class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
             for i in range(len(class_logits)):
                 if class_probs[i][0] > 0.5:
                     j = i + batch_idx
@@ -407,18 +414,20 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
 
             # free gpu memory
             del tok_texts
-    
+
     # # Predict the relations using chemprot
     if len(chemprot_batch) > 0:
         for batch_idx in range(0, len(chemprot_batch), MAX_SEQ_PER_BATCH):
             batch = chemprot_batch[batch_idx:batch_idx + MAX_SEQ_PER_BATCH]
             masked_texts = [x['masked_text'] for x in batch]
-            tok_texts = chemprot_tokenizer(masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
+            tok_texts = chemprot_tokenizer(
+                masked_texts, max_length=512, padding=True, truncation=True, return_tensors='pt').to(device)
             outputs = chemprot_model(**tok_texts)
             class_logits = outputs["logits"].detach().cpu().numpy()
             # len x 13
             # apply softmax to get the probabilities
-            class_probs = np.exp(class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
+            class_probs = np.exp(
+                class_logits) / np.sum(np.exp(class_logits), axis=1, keepdims=True)
             for i in range(len(class_logits)):
                 # if 1 class is above 0.5, then we consider it as a relation
                 max_p = np.max(class_probs[i])
@@ -431,7 +440,6 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
             # free gpu memory
             del tok_texts
 
-        
     # save entities and relations to file with pickle
     with open(path / 'entities' / file_name, 'wb') as f:
         pickle.dump(entities, f)
@@ -444,6 +452,9 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
 def query_plain(text, url="http://bern2.korea.ac.kr/plain"):
     """
     Query the BERN2 server for plain text.
+    Args:
+        text (str): the text to be annotated
+        url (str): the url of the BERN2 server.
     """
     # Limit the text at 5000 characters
     if len(text) > 5000:
@@ -456,6 +467,7 @@ def query_plain(text, url="http://bern2.korea.ac.kr/plain"):
         raise Exception("Error: {}".format(result.status_code))
 
     return result.json()
+
 
 def query_pmid(pmids, url="http://bern2.korea.ac.kr/pubmed"):
     """query the BERN2 server for pmids"""
@@ -554,20 +566,33 @@ def _html_graph_communities(G, communities, net, colors):
 
 
 def _find_community(node_id, communities):
+    """
+        Find the index of the community containing the node.
+    """
     for i, community in enumerate(communities):
         if node_id in community:
             return i
-        
-def html_mark_subgraph(G, subG, name="nodes", hide_isolated_nodes = True):
-    
+
+
+def html_mark_subgraph(G, subG, name="nodes", hide_isolated_nodes=True):
+    """
+        Create a html file, named <name>, containing the graph G with the subgraph subG marked.
+
+        Args:
+            G (networkx.Graph): The graph to be displayed.
+            subG (networkx.Graph): The subgraph to be marked.
+            name (str): The name of the html file. Default is "nodes".
+            hide_isolated_nodes (bool): If True, the isolated nodes are not displayed. Default is True.
+    """
+
     if hide_isolated_nodes:
         G.remove_nodes_from(list(nx.isolates(G)))
         subG.remove_nodes_from(list(nx.isolates(subG)))
-    
+
     net = Network('500px', '600px', notebook=True)
-    
+
     for n, d in G.nodes(data=True):
-        color='#cccccc80'
+        color = '#cccccc80'
         if n in subG.nodes():
             if d['type'] == 'gene':
                 color = '#0DA3E4'
@@ -576,25 +601,36 @@ def html_mark_subgraph(G, subG, name="nodes", hide_isolated_nodes = True):
             elif d['type'] == 'drug':
                 color = '#5ef951'
         net.add_node(n, d['mention'], color=color,
-                title=add_title_node(G, n, d))
-    
+                     title=add_title_node(G, n, d))
+
     # add edges
     for edge in G.edges(data='True'):
         weight = G.get_edge_data(edge[0], edge[1])['weight']
         if edge in subG.edges():
             net.add_edge(edge[0], edge[1], value=weight,
-                color='#F0EB5A', title=add_title_edge(G, edge))
+                         color='#F0EB5A', title=add_title_edge(G, edge))
         else:
             net.add_edge(edge[0], edge[1], value=weight,
-                color='#cccccc70', title=add_title_edge(G, edge))
+                         color='#cccccc70', title=add_title_edge(G, edge))
 
         net.show_buttons(filter_=['physics'])
         net.show(name + ".html")
         IPython.display.HTML(filename=Path(os.getcwd())/(name + ".html"))
-        
-    
-    
+
+
 def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
+    """
+        Create an html file, named <name>, representing the graph G using vis.js.
+
+        Args:
+            G (NetworkX graph): The graph to be displayed.
+            name (str): The name of the file to be created. Default is "nodes".
+            communities (List): A list of communities to be displayed. If None, no communities are displayed. Default is None.
+            hide_isolated_nodes (bool): If True, hide isolated nodes. Default is True.
+
+        Returns:
+            A pyvis network object and writes the file to the current directory.
+    """
 
     if hide_isolated_nodes:
         G.remove_nodes_from(list(nx.isolates(G)))
@@ -615,9 +651,9 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
     # if communities is not None and len(communities) > 0
     colors = []
     if communities is not None and len(communities) > 0:
-            # generate random color for each community
+        # generate random color for each community
         colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) + "90"
-                for i in range(len(communities))]
+                  for i in range(len(communities))]
         _html_graph_communities(G, communities, net, colors)
 
     # add edges
@@ -628,13 +664,13 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
             community_node1_index = _find_community(edge[0], communities)
             if edge[1] in communities[community_node1_index]:
                 net.add_edge(edge[0], edge[1], value=weight,
-                    color=colors[community_node1_index], title=add_title_edge(G, edge))
+                             color=colors[community_node1_index], title=add_title_edge(G, edge))
             else:
                 net.add_edge(edge[0], edge[1], value=weight,
-                            color='#F0EB5A', title=add_title_edge(G, edge))            
+                             color='#F0EB5A', title=add_title_edge(G, edge))
         else:
             net.add_edge(edge[0], edge[1], value=weight,
-                        color='#F0EB5A', title=add_title_edge(G, edge))
+                         color='#F0EB5A', title=add_title_edge(G, edge))
 
     net.show_buttons(filter_=['physics'])
     net.show(name + ".html")
@@ -642,50 +678,43 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
 
     return net
 
-def node_filtering(G, degree):
-    # remove nodes with degree less than the degree threshold
-    
-    graph_copy = G.copy()
 
-    to_be_removed = [node_id for node_id in graph_copy.nodes() if graph_copy.degree(node_id) <= degree]
-
-    for x in to_be_removed:
-        graph_copy.remove_node(x)
-    
-    return graph_copy
-
-
-def filter_by_centrality(G, percentage_threshold):
+def filter_by_centrality(G, percentage_threshold: float = 0.1):
     '''
     Filter the graph by mantaining the 'percentage_threshold' of the nodes with the highest centrality.
+    Args:
+        G: networkx graph
+        percentage_threshold: float between 0 and 1. The percentage of most central nodes to keep.
     '''
     mesh_id_to_degree = dict()
     for node_id in G.nodes():
         mesh_id_to_degree[node_id] = G.degree(node_id)
 
-    sorted_mesh_ids = sorted(mesh_id_to_degree, key=mesh_id_to_degree.get, reverse=True)
+    sorted_mesh_ids = sorted(
+        mesh_id_to_degree, key=mesh_id_to_degree.get, reverse=True)
 
     # take only the nodes with the highest centrality
-    nodes_to_keep = sorted_mesh_ids[:ceil(len(sorted_mesh_ids)*percentage_threshold)]
-    
+    nodes_to_keep = sorted_mesh_ids[:ceil(
+        len(sorted_mesh_ids)*percentage_threshold)]
+
     return G.subgraph(nodes_to_keep).copy()
 
 
 def filter_by_name(G, name: str):
-    """filter the graph by name
-    
-    Args: 
-        G (Networkx Graph): graph to filter
-        name (str): name to filter by
+    """
+    Filter the graph by mantaining the nodes with the given name.
+    Args:
+        G: networkx graph
+        name: str. The name of the nodes to keep.
     Returns:
-        List of nodes objects containing (mention, type, pmid, mesh_id)
+        A list of nodes that include the given name.
     """
     nodes = []
     for n, d in G.nodes(data=True):
         if name in d['mention']:
             d['mesh_id'] = n
             nodes.append(d)
-    
+
     return nodes
 
 
@@ -697,6 +726,8 @@ def filter_by_category(G, category: str, max_number_of_nodes: int = None, sort_b
         category (str): category to filter by: 'gene', 'disease', 'drug'
         max_number_of_nodes (int): maximum number of nodes to return. If None, all nodes are returned
         sort_by (str): sort by 'degree' or 'name'
+    Returns:
+        A list of nodes with the given category
     '''
     if category not in ['gene', 'disease', 'drug']:
         raise ValueError("category must be one of 'gene', 'disease', 'drug'")
@@ -708,7 +739,8 @@ def filter_by_category(G, category: str, max_number_of_nodes: int = None, sort_b
             nodes.append(d)
 
     if sort_by == 'degree':
-        nodes = sorted(nodes, key=lambda node: G.degree(node['mesh_id']), reverse=True)
+        nodes = sorted(nodes, key=lambda node: G.degree(
+            node['mesh_id']), reverse=True)
     elif sort_by == 'name':
         nodes = sorted(nodes, key=lambda node: node['mention'])
 
@@ -717,9 +749,16 @@ def filter_by_category(G, category: str, max_number_of_nodes: int = None, sort_b
 
     return nodes
 
+
 def expand_from_node(G, node, max_distance):
     ''' 
     Returns the subgraph that starting from the node id link all the node with distance k from id
+    Args:
+        G (Networkx Graph): graph to filter
+        node (str): node id
+        max_distance (int): maximum distance to expand
+    Returns:
+        A new graph containing the nodes with distance k from node
     '''
     if type(node) == List:
         node = node[0]
@@ -727,19 +766,28 @@ def expand_from_node(G, node, max_distance):
         print("Otherwise use 'expand_from_nodes'")
     node_list = [node['mesh_id']]
 
-    for node, succ  in nx.bfs_successors(G, node['mesh_id'], depth_limit = max_distance):
+    for node, succ in nx.bfs_successors(G, node['mesh_id'], depth_limit=max_distance):
         node_list += list(succ)
 
     return G.subgraph(node_list).copy()
 
 
 def expand_from_nodes(G, nodes, max_distance: int):
+    '''
+    Returns the subgraph that starting from the node id link all the node with distance k from id 
+    Args:
+        G (Networkx Graph): graph to filter
+        nodes (list): list of nodes mesh_id
+        max_distance (int): maximum distance to expand
+    Returns:
+        A new graph containing the nodes with distance k from node
+    '''
     node_id_list = [node['mesh_id'] for node in nodes]
 
     node_list = [node['mesh_id'] for node in nodes]
-    
+
     for node_id in node_id_list:
-        for _, succ  in nx.bfs_successors(G, node_id, depth_limit = max_distance):
+        for _, succ in nx.bfs_successors(G, node_id, depth_limit=max_distance):
             node_list += list(succ)
 
     return G.subgraph(node_list).copy()
@@ -748,16 +796,29 @@ def expand_from_nodes(G, nodes, max_distance: int):
 def search_path(G, from_node, to_node):
     '''
     Returns the path between two nodes in the graph
+    Args:
+        G (Networkx Graph): graph to filter
+        from_node (str): node id
+        to_node (str): node id
+    Returns:
+        A list of nodes that form the path
     '''
     return nx.shortest_path(G, source=from_node['mesh_id'], target=to_node['mesh_id'])
+
 
 def search_paths_to_category(G, from_node, category: str):
     '''
     Returns the paths from 'from_node' to nodes with the type 'category'
+    Args:
+        G (Networkx Graph): graph to filter
+        from_node (str): node id
+        category (str): category to filter by: 'gene', 'disease', 'drug'
+    Returns:
+        A list of paths
     '''
     if category not in ['gene', 'disease', 'drug']:
         raise ValueError("category must be one of 'gene', 'disease', 'drug'")
-    
+
     targets_nodes = filter_by_category(G, category)
     paths = []
     for target_node in targets_nodes:
@@ -769,12 +830,23 @@ def search_paths_to_category(G, from_node, category: str):
 def get_graph_from_path(G, path):
     '''
     Returns the subgraph that contains the nodes in the path
+    Args:
+        G (Networkx Graph): graph to filter
+        path (list): list of nodes mesh_id
+    Returns:
+        A new graph containing the nodes in the path
     '''
     return G.subgraph(path).copy()
+
 
 def get_graph_from_paths(G, paths):
     '''
     Returns the subgraph that contains the nodes in the paths
+    Args:
+        G (Networkx Graph): graph to filter
+        paths (list): list of paths
+    Returns:
+        A new graph containing the nodes in the paths
     '''
     nodes = [node for path in paths for node in path]
     return G.subgraph(nodes).copy()

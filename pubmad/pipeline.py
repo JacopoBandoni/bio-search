@@ -22,24 +22,22 @@ def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -
     comm = [list(c) for c in comm if len(list(c)) > 1]
     return comm
 
-def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, callback_fn = lambda x: None) -> nx.Graph:
+def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, save_graph: bool = True, G: nx.Graph = None, clear_cache: bool = False, callback_fn = lambda x: None, source: str = 'abstract') -> nx.Graph:
     '''
-    Returns a networkx graph containing relationships between genes and diseases.
-    
-        Parameters
-            query (str): The query to be used to search PubMed.
-            max_publications (int): The maximum number of publications to be used.
-            start_year (int): The start year to be used.
-            end_year (int): The end year to be used.
-            use_biobert (bool): Whether to use BioBERT or not.
-            source (str): The source to be used. Can be 'abstract' or 'full_text'. Defaults to 'abstract'.
-            save_graph (bool): Whether to save the graph or not. Defaults to True.
-            G (nx.Graph): The graph to be used. Defaults to an empty graph.
-            clear_cache (bool): Whether to clear the cache or not. Defaults to False.
-            callback_fn (Callable[nx.Graph, None]): The callback function to be used. Defaults to None. It receives the graph as an argument built up to the current processed article.
-            
-        Returns
-            nx.Graph (networkx.Graph): A networkx graph containing relationships between genes and diseases.
+    Returns a networkx graph containing relationships between genes and diseases and genes and drugs
+    Args:
+        query (str): The query to be used to search for articles in PubMed.
+        max_publications (int): The maximum number of publications to be used. Defaults to 10.
+        start_year (int): The start year to be used. Defaults to 1800.
+        end_year (int): The end year to be used. Defaults to the current year.
+        use_biobert (bool): Whether to use BioBERT to extract relations. Defaults to True. Otherwise it extracts relations using the naive approach of co-occurrence.
+        save_graph (bool): Whether to save the graph to disk. Defaults to True. It uses the .graphml extension which can be imported into Cytoscape.
+        G (nx.Graph): The graph to be used. Defaults to None. If None, a new graph is created.
+        clear_cache (bool): Whether to clear the cache. Defaults to False.
+        callback_fn (lambda): A callback function which receives the partial graph as an argument. Defaults to None.
+        source (str): The source to be used. Defaults to 'abstract'.
+    Returns:
+        nx.Graph: A networkx graph containing relationships between genes and diseases and genes and drugs.
     '''
     if G is None:
         G = nx.Graph()
@@ -106,4 +104,18 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
     return G
 
 def add_nodes(graph: nx.Graph, query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True) -> nx.Graph:
+    '''
+    Adds nodes to the graph.
+    Args:
+        graph (nx.Graph): The graph to be used.
+        query (str): The query to be used to search for articles in PubMed.
+        max_publications (int): The maximum number of publications to be used. Defaults to 10.
+        start_year (int): The start year to be used. Defaults to 1800.
+        end_year (int): The end year to be used. Defaults to the current year.
+        use_biobert (bool): Whether to use BioBERT to extract relations. Defaults to True. Otherwise it extracts relations using the naive approach of co-occurrence.
+        source (str): The source to be used. Defaults to 'abstract'.
+        save_graph (bool): Whether to save the graph to disk. Defaults to True. It uses the .graphml extension which can be imported into Cytoscape.
+    Returns:
+        nx.Graph: A networkx graph containing relationships between genes and diseases and genes and drugs.
+    '''
     return get_graph(query, max_publications, start_year, end_year, use_biobert, source, save_graph, graph)
