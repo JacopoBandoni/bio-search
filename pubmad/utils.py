@@ -557,6 +557,7 @@ def _find_community(node_id, communities):
     for i, community in enumerate(communities):
         if node_id in community:
             return i
+        
 def html_mark_subgraph(G, subG, name="nodes", hide_isolated_nodes = True):
     
     if hide_isolated_nodes:
