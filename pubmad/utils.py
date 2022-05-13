@@ -557,13 +557,49 @@ def _find_community(node_id, communities):
     for i, community in enumerate(communities):
         if node_id in community:
             return i
+        
+def html_mark_subgraph(G, subG, name="nodes", hide_isolated_nodes = True):
+    
+    if hide_isolated_nodes:
+        G.remove_nodes_from(list(nx.isolates(G)))
+        subG.remove_nodes_from(list(nx.isolates(subG)))
+    
+    net = Network('500px', '600px', notebook=True)
+    
+    for n, d in G.nodes(data=True):
+        color='#cccccc80'
+        if n in subG.nodes():
+            if d['type'] == 'gene':
+                color = '#0DA3E4'
+            elif d['type'] == 'disease':
+                color = '#bf4d2d'
+            elif d['type'] == 'drug':
+                color = '#5ef951'
+        net.add_node(n, d['mention'], color=color,
+                title=add_title_node(G, n, d))
+    
+    # add edges
+    for edge in G.edges(data='True'):
+        weight = G.get_edge_data(edge[0], edge[1])['weight']
+        if edge in subG.edges():
+            net.add_edge(edge[0], edge[1], value=weight,
+                color='#F0EB5A', title=add_title_edge(G, edge))
+        else:
+            net.add_edge(edge[0], edge[1], value=weight,
+                color='#cccccc70', title=add_title_edge(G, edge))
 
+        net.show_buttons(filter_=['physics'])
+        net.show(name + ".html")
+        IPython.display.HTML(filename=Path(os.getcwd())/(name + ".html"))
+        
+    
+    
 def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
 
     if hide_isolated_nodes:
         G.remove_nodes_from(list(nx.isolates(G)))
 
-    net = Network(notebook=True)
+    net = Network('500px', '600px', notebook=True)
 
     for n, d in G.nodes(data=True):
         color = '#ccc'
@@ -577,17 +613,15 @@ def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
                      title=add_title_node(G, n, d))
 
     # if communities is not None and len(communities) > 0
-    # if communities is not None and len(communities) > 0
     colors = []
     if communities is not None and len(communities) > 0:
             # generate random color for each community
-        colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+        colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) + "90"
                 for i in range(len(communities))]
         _html_graph_communities(G, communities, net, colors)
 
     # add edges
     for edge in G.edges(data='True'):
-        add_title_edge(G, edge)
         weight = G.get_edge_data(edge[0], edge[1])['weight']
         if communities is not None and len(communities) > 0:
             # find the community of the two nodes
