@@ -1,4 +1,6 @@
-from pubmad import *
-G = get_graph('diabetes', 100)
 
-html_graph(G, 'diabetes.html')
+
+from pubmad import *
+
+
+articles: List[Article] = download_articles('diabetes', start_year=2019, end_year=2020, max_articles=100, sort_by='relevance')

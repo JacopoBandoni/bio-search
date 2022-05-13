@@ -48,7 +48,7 @@ import logging
 # or 
 logging.disable(logging.WARNING) # disable WARNING, INFO and DEBUG logging everywhere
 
-def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', type_research: str = 'relevance') -> List[Article]:
+def download_articles(title: str, start_year: int, end_year: int, max_results: int = 100, author: str = '', sort_by: str = 'relevance') -> List[Article]:
     """
     Download articles from PubMed using BioPython library.
     Args:
@@ -81,7 +81,7 @@ def download_articles(title: str, start_year: int, end_year: int, max_results: i
         query = title
 
     handle = Entrez.esearch(db='pubmed',
-                            sort=type_research,
+                            sort=sort_by,
                             retmax=max_results,
                             retmode='xml',
                             datetype='pdat',

@@ -9,6 +9,15 @@ import time
 from tqdm import tqdm
 
 def get_communities(G: nx.Graph, weight_label: str = 'weight', seed: int = 42) -> List[List[str]]:
+    '''
+    Returns the communities of the graph.
+    Args:
+        G (nx.Graph): The graph to be used.
+        weight_label (str): The weight label to be used. Defaults to 'weight'.
+        seed (int): The seed to be used. Defaults to 42.
+    Returns:
+        List[List[str]]: A list of communities in the graph, each community is defined by a list of the mesh_ids of the nodes.
+    '''
     comm = nx_comm.louvain_communities(G, weight_label, seed=seed)
     comm = [list(c) for c in comm if len(list(c)) > 1]
     return comm
@@ -58,7 +67,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
                     elapsed = time.time() - start
                     if elapsed < 0.34:
                         time.sleep(0.35 - elapsed)
-                    start = time.time()
+                start = time.time()
             
             # Add the entities to the graph as nodes
             for entity in entities:
