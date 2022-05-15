@@ -103,7 +103,7 @@ def get_graph(query: str, max_publications: int = 10, start_year: int = 1800, en
     
     return G
 
-def add_nodes(graph: nx.Graph, query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, source: str = 'abstract', save_graph: bool = True) -> nx.Graph:
+def add_nodes(graph: nx.Graph, query: str, max_publications: int = 10, start_year: int = 1800, end_year: int = datetime.now().year, use_biobert: bool = True, save_graph: bool = True) -> nx.Graph:
     '''
     Adds nodes to the graph.
     Args:
@@ -113,9 +113,8 @@ def add_nodes(graph: nx.Graph, query: str, max_publications: int = 10, start_yea
         start_year (int): The start year to be used. Defaults to 1800.
         end_year (int): The end year to be used. Defaults to the current year.
         use_biobert (bool): Whether to use BioBERT to extract relations. Defaults to True. Otherwise it extracts relations using the naive approach of co-occurrence.
-        source (str): The source to be used. Defaults to 'abstract'.
         save_graph (bool): Whether to save the graph to disk. Defaults to True. It uses the .graphml extension which can be imported into Cytoscape.
     Returns:
         nx.Graph: A networkx graph containing relationships between genes and diseases and genes and drugs.
     '''
-    return get_graph(query, max_publications, start_year, end_year, use_biobert, source, save_graph, graph)
+    return get_graph(query, max_publications, start_year, end_year, use_biobert, save_graph=save_graph, G=graph)

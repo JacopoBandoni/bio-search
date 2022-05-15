@@ -238,7 +238,7 @@ def display_graph(graph: nx.Graph, hide_isolated_nodes: bool = True, show: bool 
     other_nodes = [n for n, d in graph.nodes(
         data=True) if d['type'] != 'gene' and d['type'] != 'disease']
 
-    pos = nx.spring_layout(graph)
+    pos = nx.spring_layout(graph, 100)
 
     weights = nx.get_edge_attributes(graph, 'weight')
 
@@ -788,15 +788,35 @@ def expand_from_nodes(G, nodes, max_distance: int):
     Returns:
         A new graph containing the nodes with distance k from node
     '''
-    node_id_list = [node['mesh_id'] for node in nodes]
+    if type(nodes[0]) == dict:
+        node_id_list = [node['mesh_id'] for node in nodes]
 
-    node_list = [node['mesh_id'] for node in nodes]
+        node_list = [node['mesh_id'] for node in nodes]
+    elif type(nodes[0]) == str:
+        node_id_list = nodes
+        node_list = nodes
+    else:
+        raise ValueError("nodes must be a list of mesh_id or a list of node objects")
 
     for node_id in node_id_list:
         for _, succ in nx.bfs_successors(G, node_id, depth_limit=max_distance):
             node_list += list(succ)
 
     return G.subgraph(node_list).copy()
+
+
+def get_common_articles(node1, node2):
+    '''
+    Returns the articles that both nodes mention
+    Args:
+        node1 (dict): node object
+        node2 (dict): node object
+    Returns:
+        A list of articles
+    '''
+    articles_node1 = node1['pmid']
+    articles_node2 = node2['pmid']
+    return list(set(articles_node1.split(',')).intersection(articles_node2.split(',')))
 
 
 def search_path(G, from_node, to_node):
@@ -809,26 +829,32 @@ def search_path(G, from_node, to_node):
     Returns:
         A list of nodes that form the path
     '''
-    return nx.shortest_path(G, source=from_node['mesh_id'], target=to_node['mesh_id'])
+    try:
+        return nx.shortest_path(G, source=from_node['mesh_id'], target=to_node['mesh_id'])
+    except nx.NetworkXNoPath:
+        return []
 
 
-def search_paths_to_category(G, from_node, category: str):
+def search_paths_to_category(G, from_node, to_category: str):
     '''
-    Returns the paths from 'from_node' to nodes with the type 'category'
+    Returns the paths from 'from_node' to nodes with the type 'to_category'
     Args:
         G (Networkx Graph): graph to filter
         from_node (str): node id
-        category (str): category to filter by: 'gene', 'disease', 'drug'
+        to_category (str): to_category to filter by: 'gene', 'disease', 'drug'
     Returns:
         A list of paths
     '''
-    if category not in ['gene', 'disease', 'drug']:
-        raise ValueError("category must be one of 'gene', 'disease', 'drug'")
+    if to_category not in ['gene', 'disease', 'drug']:
+        raise ValueError("to_category must be one of 'gene', 'disease', 'drug'")
 
-    targets_nodes = filter_by_category(G, category)
+    targets_nodes = filter_by_category(G, to_category)
     paths = []
     for target_node in targets_nodes:
         paths.append(search_path(G, from_node, target_node))
+
+    # remove empty paths
+    paths = [path for path in paths if len(path) > 0]
 
     return paths
 
