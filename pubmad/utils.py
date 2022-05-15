@@ -26,6 +26,7 @@ nltk.download('punkt', quiet=True)
 # Number of sequences per batch
 MAX_SEQ_PER_BATCH = 2
 
+print("Loading models...")
 chemprot_model = AutoModelForSequenceClassification.from_pretrained(
     "pier297/autotrain-chemprot-re-838426740")
 chemprot_tokenizer = AutoTokenizer.from_pretrained(
@@ -36,6 +37,7 @@ rel_tokenizer = AutoTokenizer.from_pretrained(
 
 rel_model = AutoModelForSequenceClassification.from_pretrained(
     "JacopoBandoni/BioBertRelationGenesDiseases")
+print('Finished loading models.')
 
 chemprot_model.eval()
 rel_model.eval()
@@ -311,7 +313,6 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
             os.remove(path / 'entities' / file_name)
             os.remove(path / 'relations' / file_name)
         else:
-            print("Loading cached relations and entities")
             with open(path / 'entities' / file_name, 'rb') as f:
                 entities = pickle.load(f)
             with open(path / 'relations' / file_name, 'rb') as f:
@@ -368,8 +369,6 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                     " ]]" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
 
-            print(masked_text)
-
             chemprot_batch.append(
                 {'gene_idx': gene_idx, 'drug_idx': drug_idx, 'masked_text': masked_text})
 
@@ -388,8 +387,6 @@ def extract_biobert_relations(article: Article, source: str = 'abstract', clear_
                 masked_text = text[span_sentences[sentence_index_disease][0]:disease_entity.span_begin] + "@DISEASE$" + \
                     text[disease_entity.span_end:gene_entity.span_begin] + "@GENE$" + \
                     text[gene_entity.span_end:span_sentences[sentence_index_gene][1]]
-
-            #print(masked_text)
 
             biobert_batch.append(
                 {'gene_idx': gene_idx, 'disease_idx': disease_idx, 'masked_text': masked_text})
