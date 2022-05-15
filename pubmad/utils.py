@@ -595,29 +595,36 @@ def html_mark_subgraph(G, subG, name="nodes", hide_isolated_nodes=True):
 
     for n, d in G.nodes(data=True):
         color = '#cccccc80'
-        if n in subG.nodes():
-            if d['type'] == 'gene':
-                color = '#0DA3E4'
-            elif d['type'] == 'disease':
-                color = '#bf4d2d'
-            elif d['type'] == 'drug':
-                color = '#5ef951'
-        net.add_node(n, d['mention'], color=color,
-                     title=add_title_node(G, n, d))
+        if n not in subG.nodes():
+            net.add_node(n, d['mention'], color='#cccccc80',
+                title=add_title_node(G, n, d))
 
-    # add edges
+    for n, d in subG.nodes(data=True):
+        color = '#cccccc80'
+        if d['type'] == 'gene':
+            color = '#0DA3E4'
+        elif d['type'] == 'disease':
+            color = '#bf4d2d'
+        elif d['type'] == 'drug':
+            color = '#5ef951'
+        net.add_node(n, d['mention'], color=color,
+            title=add_title_node(G, n, d))
+
+    # add edges not in subG
     for edge in G.edges(data='True'):
         weight = G.get_edge_data(edge[0], edge[1])['weight']
-        if edge in subG.edges():
-            net.add_edge(edge[0], edge[1], value=weight,
-                         color='#F0EB5A', title=add_title_edge(G, edge))
-        else:
-            net.add_edge(edge[0], edge[1], value=weight,
-                         color='#cccccc70', title=add_title_edge(G, edge))
+        net.add_edge(edge[0], edge[1], value=weight,
+            color='#cccccc70', title=add_title_edge(G, edge))
 
-        net.show_buttons(filter_=['physics'])
-        net.show(name + ".html")
-        IPython.display.HTML(filename=Path(os.getcwd())/(name + ".html"))
+    # add edges in subG
+    for edge in subG.edges(data='True'):
+        weight = G.get_edge_data(edge[0], edge[1])['weight']
+        net.add_edge(edge[0], edge[1], value=weight,
+            color='#F0EB5A', title=add_title_edge(subG, edge))
+
+    net.show_buttons(filter_=['physics'])
+    net.show(name + ".html")
+    IPython.display.HTML(filename=Path(os.getcwd())/(name + ".html"))
 
 
 def html_graph(G, name="nodes", communities=None, hide_isolated_nodes=True):
