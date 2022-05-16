@@ -15,4 +15,4 @@ and execute:
 
 To generate the doc run:
 
-> pdoc -o docs/ pubmad/pipeline.py pubmad/utils.py pubmad/types.py --logo logo.jpeg
+> pdoc -o docs/ pubmad/pipeline.py pubmad/utils.py pubmad/types.py --logo logo.png
