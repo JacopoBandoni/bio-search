@@ -1,8 +1,8 @@
 # ProgettoBIO
 
-The documentation can be seen at https://pier297.github.io/ProgettoBIO/
+## How to use the no-code interface
 
-## To run the server
+Run the server with the following commands:
 
 > export FLASK_APP=server
 
@@ -13,6 +13,10 @@ and execute:
 
 > npm start
 
-To generate the doc run:
+## How to use pubmad pyp library
 
-> pdoc -o docs/ pubmad/pipeline.py pubmad/utils.py pubmad/types.py --logo logo.png
+To perform installation run:
+
+> pip install pubmad
+
+Then check out the documentation to look at the available commands (https://pier297.github.io/ProgettoBIO/) or look at demo.ipynb notebook to get an overview of potential use of the commands.
