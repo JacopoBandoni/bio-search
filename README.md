@@ -29,4 +29,4 @@ To perform installation run:
 
 Then check out the documentation to look at the available commands (https://pier297.github.io/ProgettoBIO/) or look at demo.ipynb notebook to get an overview of potential use of the commands.
 
-Note: project done in collaboration with William Simoni & Pierpaolo Tarasco
+Note: project done in collaboration with William Simoni & Pierpaolo Tarasco. Implemented for the Computational Health Course 2022.
