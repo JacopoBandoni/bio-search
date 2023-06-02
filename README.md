@@ -21,7 +21,7 @@ and execute:
 
 > npm start
 
-## How to use pubmad pyp library
+## How to use pubmad pip library
 
 To perform installation run:
 
